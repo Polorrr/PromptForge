@@ -1,4 +1,22 @@
-export function META_PROMPT(outputLanguage: 'en' | 'zh' | 'same'): string {
+import type { OptimizeStyle } from '@/types/llm';
+
+const STYLE_INSTRUCTIONS: Record<OptimizeStyle, string> = {
+  default:
+    'Optimize for clarity, completeness, and effectiveness. Use a balanced approach.',
+  concise:
+    'Optimize for brevity. Remove all unnecessary words. Use short sentences and bullet points. The result should be as compact as possible while preserving all meaning.',
+  detailed:
+    'Optimize for thoroughness. Add explicit step-by-step breakdowns, detailed constraints, output format specifications, and concrete examples. The result should be comprehensive and leave nothing ambiguous.',
+  creative:
+    'Optimize for engagement and creativity. Use vivid language, compelling framing, and an engaging tone. Add role-playing elements or storytelling hooks where appropriate to make the prompt more interesting to read and respond to.',
+  professional:
+    'Optimize for formal, business-ready tone. Use precise terminology, structured formatting, and professional language suitable for enterprise or academic contexts. Avoid casual expressions.',
+};
+
+export function META_PROMPT(
+  outputLanguage: 'en' | 'zh' | 'same',
+  style: OptimizeStyle = 'default'
+): string {
   const langInstruction =
     outputLanguage === 'same'
       ? 'Respond in the same language as the input prompt.'
@@ -6,7 +24,12 @@ export function META_PROMPT(outputLanguage: 'en' | 'zh' | 'same'): string {
         ? 'Respond in Chinese (Simplified).'
         : 'Respond in English.';
 
+  const styleInstruction = STYLE_INSTRUCTIONS[style];
+
   return `You are PromptForge, an expert prompt engineer. Your task is to take a rough, incomplete, or poorly structured prompt and transform it into a high-quality, optimized prompt.
+
+## Optimization Style
+${styleInstruction}
 
 ## Your Process
 

@@ -29,11 +29,15 @@ export function useOptimize() {
       store.setOptimizing(true);
       store.setError(null);
 
+      // Force React to flush the loading state to the DOM before the API call
+      await new Promise((r) => setTimeout(r, 0));
+
       try {
         const request = {
           prompt: store.inputPrompt,
           context: store.context,
           language: settings.optimizeLanguage,
+          style: store.selectedStyle,
           provider,
           model,
         };

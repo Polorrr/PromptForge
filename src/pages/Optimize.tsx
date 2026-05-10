@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Sparkles, Copy, Save, RotateCcw, ChevronDown, RefreshCw } from 'lucide-react';
+import { Sparkles, Copy, Save, RotateCcw, ChevronDown, RefreshCw, History } from 'lucide-react';
 import { useOptimize } from '@/hooks/useOptimize';
 import { useRelayModels } from '@/hooks/useRelayModels';
+import { useOptimizeStore } from '@/stores/useOptimizeStore';
 import { usePromptStore } from '@/stores/usePromptStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Button } from '@/components/ui';
@@ -11,10 +14,12 @@ import { copyToClipboard } from '@/utils/copy';
 import { MODELS } from '@/constants/models';
 import { cn } from '@/utils/cn';
 import { useState } from 'react';
+import type { OptimizeStyle } from '@/types/llm';
 
 export default function Optimize() {
   const { t } = useTranslation();
   const toast = useToast();
+  const location = useLocation();
   const {
     inputPrompt,
     setInputPrompt,
@@ -29,6 +34,8 @@ export default function Optimize() {
     setSelectedProvider,
     selectedModel,
     setSelectedModel,
+    selectedStyle,
+    setSelectedStyle,
     sessionHistory,
     optimize,
     hasApiKey,
@@ -37,9 +44,22 @@ export default function Optimize() {
 
   const createPrompt = usePromptStore((s) => s.createPrompt);
   const settings = useSettingsStore();
+  const setOptimizedPrompt = useOptimizeStore((s) => s.setResult);
   const [showHistory, setShowHistory] = useState(false);
   const { models: relayModels, loading: relayLoading, reload: reloadRelayModels } = useRelayModels();
   const [manualModel, setManualModel] = useState('');
+
+  useEffect(() => {
+    const prefill = location.state?.prefill as string | undefined;
+    const prefillResult = location.state?.prefillResult as string | undefined;
+    if (prefill) {
+      setInputPrompt(prefill);
+      if (prefillResult) {
+        setOptimizedPrompt({ optimized: prefillResult, explanation: '', suggestions: [] });
+      }
+      window.history.replaceState({}, '');
+    }
+  }, [location.state, setInputPrompt, setOptimizedPrompt]);
 
   const handleOptimize = () => {
     if (!inputPrompt.trim()) return;
@@ -80,9 +100,9 @@ export default function Optimize() {
   return (
     <div className="h-full flex flex-col" onKeyDown={handleKeyDown}>
       {/* Header */}
-      <div className="px-6 py-4 border-b border-surface-2 dark:border-dark-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-surface-2 dark:border-dark-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-heading">{t('optimize.title')}</h1>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Provider selector */}
           <select
             value={selectedProvider}
@@ -158,6 +178,18 @@ export default function Optimize() {
               ))}
             </select>
           )}
+          {/* Style */}
+          <select
+            value={selectedStyle}
+            onChange={(e) => setSelectedStyle(e.target.value as OptimizeStyle)}
+            className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="default">{t('optimize.styleDefault')}</option>
+            <option value="concise">{t('optimize.styleConcise')}</option>
+            <option value="detailed">{t('optimize.styleDetailed')}</option>
+            <option value="creative">{t('optimize.styleCreative')}</option>
+            <option value="professional">{t('optimize.styleProfessional')}</option>
+          </select>
           {/* Language */}
           <select
             value={settings.optimizeLanguage}
@@ -174,19 +206,18 @@ export default function Optimize() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         {/* Left panel - Input */}
-        <div className="flex-1 flex flex-col p-6 lg:border-r border-b lg:border-b-0 border-surface-2 dark:border-dark-3 min-w-0">
-          <div className="flex-1 flex flex-col gap-4">
-            <div className="flex-1 flex flex-col">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <div className="flex-1 flex flex-col p-4 sm:p-6 lg:border-r border-b lg:border-b-0 border-surface-2 dark:border-dark-3 min-w-0 min-h-0 overflow-auto">
+          <div className="flex-1 flex flex-col gap-4 min-h-0">
+            <div className="flex-1 flex flex-col min-h-0">
+              <label className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t('optimize.inputLabel')}
               </label>
               <Textarea
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
                 placeholder={t('optimize.inputPlaceholder')}
-                className="flex-1 min-h-[200px]"
               />
               <div className="mt-1 text-xs text-gray-400 text-right">
                 {t('optimize.charCount', { count: inputPrompt.length })}
@@ -194,7 +225,7 @@ export default function Optimize() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t('optimize.contextLabel')}
               </label>
               <input
@@ -207,7 +238,7 @@ export default function Optimize() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <Button
                 onClick={handleOptimize}
                 loading={isOptimizing}
@@ -235,13 +266,13 @@ export default function Optimize() {
         </div>
 
         {/* Right panel - Output */}
-        <div className="flex-1 flex flex-col p-6 min-w-0">
+        <div className="flex-1 flex flex-col p-4 sm:p-6 min-w-0 min-h-0 overflow-auto">
           {optimizedPrompt ? (
-            <div className="flex-1 flex flex-col gap-4 animate-fade-in">
+            <div className="flex-1 flex flex-col gap-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
               {/* Optimized prompt */}
               <div className="flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="text-base font-medium text-gray-700 dark:text-gray-300">
                     {t('optimize.outputLabel')}
                   </label>
                   <div className="flex items-center gap-1">
@@ -256,7 +287,7 @@ export default function Optimize() {
                   </div>
                 </div>
                 <div className="flex-1 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4 overflow-auto">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 font-sans leading-relaxed">
+                  <pre className="whitespace-pre-wrap text-base text-gray-800 dark:text-gray-200 font-sans leading-relaxed">
                     {optimizedPrompt}
                   </pre>
                 </div>
@@ -265,10 +296,10 @@ export default function Optimize() {
               {/* Explanation */}
               {explanation && (
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                  <label className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                     {t('optimize.explanationLabel')}
                   </label>
-                  <div className="rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  <div className="rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4 text-base text-gray-600 dark:text-gray-400 leading-relaxed">
                     {explanation}
                   </div>
                 </div>
@@ -277,14 +308,14 @@ export default function Optimize() {
               {/* Suggestions */}
               {suggestions.length > 0 && (
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                  <label className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                     {t('optimize.suggestionsLabel')}
                   </label>
                   <ul className="space-y-1.5">
                     {suggestions.map((s, i) => (
                       <li
                         key={i}
-                        className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400"
+                        className="flex items-start gap-2 text-base text-gray-600 dark:text-gray-400"
                       >
                         <span className="text-brand-500 mt-0.5">•</span>
                         {s}
@@ -294,11 +325,29 @@ export default function Optimize() {
                 </div>
               )}
             </div>
+          ) : isOptimizing ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+              <div className="relative w-16 h-16">
+                <div className="absolute inset-0 rounded-full border-4 border-surface-3 dark:border-dark-3" />
+                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-brand-500 animate-spin" />
+                <Sparkles size={24} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-brand-500 animate-pulse" />
+              </div>
+              <div className="text-center">
+                <p className="text-base font-medium text-gray-700 dark:text-gray-300">{t('optimize.optimizing')}</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{t('optimize.aiThinking')}</p>
+              </div>
+              <div className="w-full max-w-xs h-2 bg-surface-2 dark:bg-dark-3 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-500 rounded-full"
+                  style={{ animation: 'loadingBar 1.5s ease-in-out infinite' }}
+                />
+              </div>
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <Sparkles size={48} className="mx-auto mb-4 opacity-30" />
-                <p className="text-sm">{t('optimize.inputPlaceholder')}</p>
+                <p className="text-base">{t('optimize.inputPlaceholder')}</p>
                 <p className="text-xs mt-2 text-gray-300 dark:text-gray-600">
                   {typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'}+Enter {t('optimize.optimizeButton').toLowerCase()}
                 </p>
@@ -310,29 +359,32 @@ export default function Optimize() {
 
       {/* Session history */}
       {sessionHistory.length > 0 && (
-        <div className="border-t border-surface-2 dark:border-dark-3">
+        <div className="border-t border-surface-2 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 shrink-0">
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="w-full px-6 py-2 flex items-center justify-between text-xs text-gray-500 hover:bg-surface-1 dark:hover:bg-dark-1 transition-colors"
+            className="w-full px-4 sm:px-6 py-2.5 flex items-center justify-between text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2 transition-colors"
           >
-            <span>{t('optimize.history')} ({sessionHistory.length})</span>
+            <span className="flex items-center gap-2">
+              <History size={14} />
+              {t('optimize.history')} ({sessionHistory.length})
+            </span>
             <ChevronDown
-              size={14}
+              size={16}
               className={cn('transition-transform', showHistory && 'rotate-180')}
             />
           </button>
           {showHistory && (
-            <div className="px-6 pb-3 flex gap-3 overflow-x-auto animate-slide-up">
+            <div className="px-4 sm:px-6 pb-3 flex gap-3 overflow-x-auto max-h-32 items-start" style={{ animation: 'slideUp 0.3s ease-out' }}>
               {sessionHistory.map((h, i) => (
                 <button
                   key={i}
                   onClick={() => {
                     setInputPrompt(h.input);
                   }}
-                  className="shrink-0 w-48 text-left p-3 rounded-lg border border-surface-3 dark:border-dark-3 hover:border-brand-300 dark:hover:border-brand-700 transition-colors"
+                  className="shrink-0 w-64 text-left p-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 hover:border-brand-400 dark:hover:border-brand-600 hover:shadow-elevated transition-all"
                 >
-                  <p className="text-xs text-gray-500 truncate">{h.input}</p>
-                  <p className="text-xs text-gray-400 mt-1 truncate">{h.output}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{h.input}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 line-clamp-1">{h.output}</p>
                 </button>
               ))}
             </div>

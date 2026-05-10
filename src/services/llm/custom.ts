@@ -26,7 +26,7 @@ export class CustomService {
     onChunk?: (chunk: StreamChunk) => void
   ): Promise<OptimizeResponse> {
     const client = this.getClient(apiKey, baseUrl);
-    const systemPrompt = META_PROMPT(request.language);
+    const systemPrompt = META_PROMPT(request.language, request.style);
 
     if (onChunk) {
       const stream = await client.chat.completions.create({

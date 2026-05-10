@@ -186,11 +186,12 @@ export default function PromptDetail() {
       </div>
 
       {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
         {/* Original */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="rounded-xl border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-gray-400" />
               {t('detail.original')}
             </h3>
             <Button
@@ -201,17 +202,18 @@ export default function PromptDetail() {
               <Copy size={14} />
             </Button>
           </div>
-          <div className="rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4 min-h-[200px] overflow-x-auto">
-            <pre className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400 font-sans leading-relaxed">
+          <div className="rounded-lg bg-surface-1 dark:bg-dark-1 p-4 overflow-x-auto">
+            <pre className="whitespace-pre-wrap text-base text-gray-600 dark:text-gray-400 font-sans leading-relaxed">
               {prompt.originalText}
             </pre>
           </div>
         </div>
 
         {/* Optimized */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="rounded-xl border border-brand-200 dark:border-brand-800 bg-surface-0 dark:bg-dark-0 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-brand-500" />
               {t('detail.optimized')}
             </h3>
             <Button
@@ -222,25 +224,26 @@ export default function PromptDetail() {
               <Copy size={14} />
             </Button>
           </div>
-          <div className="rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4 min-h-[200px] overflow-x-auto">
-            <pre className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 font-sans leading-relaxed">
+          <div className="rounded-lg bg-brand-50/50 dark:bg-brand-900/10 p-4 overflow-x-auto">
+            <pre className="whitespace-pre-wrap text-base text-gray-800 dark:text-gray-200 font-sans leading-relaxed">
               {prompt.optimizedText}
             </pre>
           </div>
         </div>
-      </div>
 
-      {/* Explanation */}
-      {prompt.explanation && (
-        <div className="mt-6">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('detail.explanation')}
-          </h3>
-          <div className="rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-            {prompt.explanation}
+        {/* Explanation */}
+        {prompt.explanation && (
+          <div className="rounded-xl border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 p-5">
+            <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-yellow-400" />
+              {t('detail.explanation')}
+            </h3>
+            <div className="rounded-lg bg-surface-1 dark:bg-dark-1 p-4 text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+              {prompt.explanation}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Actions */}
       <div className="mt-6 flex items-center gap-3">
@@ -257,7 +260,7 @@ export default function PromptDetail() {
           <ExternalLink size={16} />
           {t('detail.createGist')}
         </Button>
-        <Link to={ROUTES.OPTIMIZE}>
+        <Link to={ROUTES.OPTIMIZE} state={{ prefill: prompt.originalText, prefillResult: prompt.optimizedText }}>
           <Button variant="secondary">
             <Edit3 size={16} />
             {t('optimize.reOptimize')}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { LLMProvider } from '@/types/settings';
+import type { OptimizeStyle } from '@/types/llm';
 
 interface OptimizeState {
   inputPrompt: string;
@@ -12,6 +13,7 @@ interface OptimizeState {
   error: string | null;
   selectedProvider: LLMProvider;
   selectedModel: string;
+  selectedStyle: OptimizeStyle;
   sessionHistory: Array<{
     input: string;
     output: string;
@@ -22,6 +24,7 @@ interface OptimizeState {
   setContext: (context: string) => void;
   setSelectedProvider: (provider: LLMProvider) => void;
   setSelectedModel: (model: string) => void;
+  setSelectedStyle: (style: OptimizeStyle) => void;
   setOptimizing: (val: boolean) => void;
   setStreaming: (val: boolean) => void;
   setResult: (result: { optimized: string; explanation: string; suggestions: string[] }) => void;
@@ -42,12 +45,14 @@ export const useOptimizeStore = create<OptimizeState>((set) => ({
   error: null,
   selectedProvider: 'openai',
   selectedModel: 'gpt-4o',
+  selectedStyle: 'default',
   sessionHistory: [],
 
   setInputPrompt: (inputPrompt) => set({ inputPrompt }),
   setContext: (context) => set({ context }),
   setSelectedProvider: (selectedProvider) => set({ selectedProvider }),
   setSelectedModel: (selectedModel) => set({ selectedModel }),
+  setSelectedStyle: (selectedStyle) => set({ selectedStyle }),
   setOptimizing: (isOptimizing) => set({ isOptimizing }),
   setStreaming: (isStreaming) => set({ isStreaming }),
   setResult: ({ optimized, explanation, suggestions }) =>

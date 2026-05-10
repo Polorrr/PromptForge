@@ -49,9 +49,10 @@ export default function Sidebar() {
           <NavLink
             key={item.path}
             to={item.path}
+            tabIndex={-1}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
                 isActive
                   ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2'
@@ -68,9 +69,10 @@ export default function Sidebar() {
       <div className="py-3 px-2 border-t border-surface-2 dark:border-dark-3 space-y-1">
         <NavLink
           to={ROUTES.SETTINGS}
+          tabIndex={-1}
           className={({ isActive }) =>
             cn(
-              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
               isActive
                 ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
                 : 'text-gray-600 dark:text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2'
@@ -83,7 +85,7 @@ export default function Sidebar() {
 
         <button
           onClick={toggleSidebar}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-surface-2 dark:hover:bg-dark-2 transition-colors w-full"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-surface-2 dark:hover:bg-dark-2 transition-colors w-full outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         >
           {sidebarOpen ? (
             <ChevronLeft size={20} className="shrink-0" />

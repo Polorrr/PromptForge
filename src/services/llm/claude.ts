@@ -7,7 +7,7 @@ export class ClaudeService {
     apiKey: string,
     onChunk?: (chunk: StreamChunk) => void
   ): Promise<OptimizeResponse> {
-    const systemPrompt = META_PROMPT(request.language);
+    const systemPrompt = META_PROMPT(request.language, request.style);
 
     const response = await fetch('/api/claude', {
       method: 'POST',

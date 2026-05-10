@@ -30,7 +30,7 @@ export default function Home() {
           <Sparkles size={16} />
           PromptForge
         </div>
-        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent pb-1">
           {t('home.title')}
         </h1>
         <p className="text-xl text-gray-500 mb-8 max-w-lg mx-auto">
