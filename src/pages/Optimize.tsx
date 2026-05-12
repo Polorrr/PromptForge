@@ -108,6 +108,8 @@ export default function Optimize() {
       useOptimizeStore.getState().addToHistory({
         input: inputPrompt,
         output: result.optimizedPrompt,
+        explanation: result.explanation,
+        suggestions: result.suggestions,
         provider: selectedProvider,
         timestamp: new Date().toISOString(),
       });
@@ -128,6 +130,13 @@ export default function Optimize() {
 
   const handleCopy = async () => {
     if (await copyToClipboard(optimizedPrompt)) {
+      toast('success', t('common.copied'));
+    }
+  };
+
+  const handleCopyHistory = async (entry: { input: string; output: string; explanation: string; suggestions: string[] }) => {
+    const text = `【原始提示词】\n${entry.input}\n\n【优化后提示词】\n${entry.output}\n\n【改动说明】\n${entry.explanation}\n\n【进一步建议】\n${entry.suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+    if (await copyToClipboard(text)) {
       toast('success', t('common.copied'));
     }
   };
@@ -427,18 +436,28 @@ export default function Optimize() {
             />
           </button>
           {showHistory && (
-            <div className="px-4 sm:px-6 pb-3 flex gap-3 overflow-x-auto max-h-32 items-start" style={{ animation: 'slideUp 0.3s ease-out' }}>
+            <div className="px-4 sm:px-6 pb-3 flex gap-3 overflow-x-auto max-h-40 items-start" style={{ animation: 'slideUp 0.3s ease-out' }}>
               {sessionHistory.map((h, i) => (
-                <button
+                <div
                   key={i}
-                  onClick={() => {
-                    setInputPrompt(h.input);
-                  }}
-                  className="shrink-0 w-64 text-left p-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 hover:border-brand-400 dark:hover:border-brand-600 hover:shadow-elevated transition-all"
+                  className="shrink-0 w-64 p-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 hover:border-brand-400 dark:hover:border-brand-600 hover:shadow-elevated transition-all"
                 >
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{h.input}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 line-clamp-1">{h.output}</p>
-                </button>
+                  <button
+                    onClick={() => {
+                      setInputPrompt(h.input);
+                    }}
+                    className="w-full text-left"
+                  >
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{h.input}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 line-clamp-1">{h.output}</p>
+                  </button>
+                  <button
+                    onClick={() => handleCopyHistory(h)}
+                    className="mt-2 text-xs text-brand-500 hover:text-brand-600 transition-colors"
+                  >
+                    {t('common.copy')}
+                  </button>
+                </div>
               ))}
             </div>
           )}

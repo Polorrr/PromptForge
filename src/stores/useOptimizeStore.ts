@@ -18,6 +18,8 @@ interface OptimizeState {
   sessionHistory: Array<{
     input: string;
     output: string;
+    explanation: string;
+    suggestions: string[];
     provider: LLMProvider;
     timestamp: string;
   }>;
@@ -30,7 +32,7 @@ interface OptimizeState {
   setStreaming: (val: boolean) => void;
   setResult: (result: { optimized: string; explanation: string; suggestions: string[] }) => void;
   setError: (error: string | null) => void;
-  addToHistory: (entry: { input: string; output: string; provider: LLMProvider; timestamp: string }) => void;
+  addToHistory: (entry: { input: string; output: string; explanation: string; suggestions: string[]; provider: LLMProvider; timestamp: string }) => void;
   clearResult: () => void;
   reset: () => void;
 }
