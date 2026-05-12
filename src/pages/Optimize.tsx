@@ -438,26 +438,17 @@ export default function Optimize() {
           {showHistory && (
             <div className="px-4 sm:px-6 pb-3 flex gap-3 overflow-x-auto max-h-40 items-start" style={{ animation: 'slideUp 0.3s ease-out' }}>
               {sessionHistory.map((h, i) => (
-                <div
+                <button
                   key={i}
-                  className="shrink-0 w-64 p-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 hover:border-brand-400 dark:hover:border-brand-600 hover:shadow-elevated transition-all"
+                  onClick={() => {
+                    setInputPrompt(h.input);
+                    handleCopyHistory(h);
+                  }}
+                  className="shrink-0 w-64 text-left p-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 hover:border-brand-400 dark:hover:border-brand-600 hover:shadow-elevated transition-all"
                 >
-                  <button
-                    onClick={() => {
-                      setInputPrompt(h.input);
-                    }}
-                    className="w-full text-left"
-                  >
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{h.input}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 line-clamp-1">{h.output}</p>
-                  </button>
-                  <button
-                    onClick={() => handleCopyHistory(h)}
-                    className="mt-2 text-xs text-brand-500 hover:text-brand-600 transition-colors"
-                  >
-                    {t('common.copy')}
-                  </button>
-                </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{h.input}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 line-clamp-1">{h.output}</p>
+                </button>
               ))}
             </div>
           )}
