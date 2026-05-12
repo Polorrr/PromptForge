@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { LLMProvider } from '@/types/settings';
 import type { OptimizeStyle } from '@/types/llm';
 
@@ -34,43 +35,9 @@ interface OptimizeState {
   reset: () => void;
 }
 
-export const useOptimizeStore = create<OptimizeState>((set) => ({
-  inputPrompt: '',
-  context: '',
-  optimizedPrompt: '',
-  explanation: '',
-  suggestions: [],
-  isOptimizing: false,
-  isStreaming: false,
-  error: null,
-  selectedProvider: 'openai',
-  selectedModel: 'gpt-4o',
-  selectedStyle: 'default',
-  sessionHistory: [],
-
-  setInputPrompt: (inputPrompt) => set({ inputPrompt }),
-  setContext: (context) => set({ context }),
-  setSelectedProvider: (selectedProvider) => set({ selectedProvider }),
-  setSelectedModel: (selectedModel) => set({ selectedModel }),
-  setSelectedStyle: (selectedStyle) => set({ selectedStyle }),
-  setOptimizing: (isOptimizing) => set({ isOptimizing }),
-  setStreaming: (isStreaming) => set({ isStreaming }),
-  setResult: ({ optimized, explanation, suggestions }) =>
-    set({
-      optimizedPrompt: optimized,
-      explanation,
-      suggestions,
-      isOptimizing: false,
-      isStreaming: false,
-      error: null,
-    }),
-  setError: (error) => set({ error, isOptimizing: false, isStreaming: false }),
-  addToHistory: (entry) =>
-    set((s) => ({ sessionHistory: [entry, ...s.sessionHistory] })),
-  clearResult: () =>
-    set({ optimizedPrompt: '', explanation: '', suggestions: [], error: null }),
-  reset: () =>
-    set({
+export const useOptimizeStore = create<OptimizeState>()(
+  persist(
+    (set) => ({
       inputPrompt: '',
       context: '',
       optimizedPrompt: '',
@@ -79,5 +46,51 @@ export const useOptimizeStore = create<OptimizeState>((set) => ({
       isOptimizing: false,
       isStreaming: false,
       error: null,
+      selectedProvider: 'openai',
+      selectedModel: 'gpt-4o',
+      selectedStyle: 'default',
+      sessionHistory: [],
+
+      setInputPrompt: (inputPrompt) => set({ inputPrompt }),
+      setContext: (context) => set({ context }),
+      setSelectedProvider: (selectedProvider) => set({ selectedProvider }),
+      setSelectedModel: (selectedModel) => set({ selectedModel }),
+      setSelectedStyle: (selectedStyle) => set({ selectedStyle }),
+      setOptimizing: (isOptimizing) => set({ isOptimizing }),
+      setStreaming: (isStreaming) => set({ isStreaming }),
+      setResult: ({ optimized, explanation, suggestions }) =>
+        set({
+          optimizedPrompt: optimized,
+          explanation,
+          suggestions,
+          isOptimizing: false,
+          isStreaming: false,
+          error: null,
+        }),
+      setError: (error) => set({ error, isOptimizing: false, isStreaming: false }),
+      addToHistory: (entry) =>
+        set((s) => ({ sessionHistory: [entry, ...s.sessionHistory] })),
+      clearResult: () =>
+        set({ optimizedPrompt: '', explanation: '', suggestions: [], error: null }),
+      reset: () =>
+        set({
+          inputPrompt: '',
+          context: '',
+          optimizedPrompt: '',
+          explanation: '',
+          suggestions: [],
+          isOptimizing: false,
+          isStreaming: false,
+          error: null,
+        }),
     }),
-}));
+    {
+      name: 'promptforge-optimize-settings',
+      partialize: (state) => ({
+        selectedProvider: state.selectedProvider,
+        selectedModel: state.selectedModel,
+        selectedStyle: state.selectedStyle,
+      }),
+    }
+  )
+);

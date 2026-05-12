@@ -13,8 +13,18 @@ import { useToast } from '@/components/ui/Toast';
 import { copyToClipboard } from '@/utils/copy';
 import { MODELS } from '@/constants/models';
 import { cn } from '@/utils/cn';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { OptimizeStyle } from '@/types/llm';
+
+function cleanMarkdown(text: string): string {
+  return text
+    .replace(/\*{3,}/g, '')
+    .replace(/\*{2}([^*]+)\*{2}/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^[-*]\s+/gm, '- ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 export default function Optimize() {
   const { t } = useTranslation();
@@ -47,6 +57,11 @@ export default function Optimize() {
   const [showHistory, setShowHistory] = useState(false);
   const { models: relayModels, loading: relayLoading, reload: reloadRelayModels } = useRelayModels();
   const [manualModel, setManualModel] = useState('');
+
+  const cleanedPrompt = useMemo(() => {
+    if (!optimizedPrompt) return '';
+    return cleanMarkdown(optimizedPrompt);
+  }, [optimizedPrompt]);
 
   useEffect(() => {
     const prefill = location.state?.prefill as string | undefined;
@@ -326,7 +341,7 @@ export default function Optimize() {
                 </div>
                 <div className="flex-1 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4 overflow-auto">
                   <pre className="whitespace-pre-wrap text-base text-gray-800 dark:text-gray-200 font-sans leading-relaxed">
-                    {optimizedPrompt}
+                    {cleanedPrompt}
                   </pre>
                 </div>
               </div>
