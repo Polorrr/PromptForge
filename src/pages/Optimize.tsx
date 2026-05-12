@@ -28,7 +28,6 @@ export default function Optimize() {
     optimizedPrompt,
     explanation,
     suggestions,
-    isOptimizing,
     error,
     selectedProvider,
     setSelectedProvider,
@@ -37,11 +36,11 @@ export default function Optimize() {
     selectedStyle,
     setSelectedStyle,
     sessionHistory,
-    optimize,
     hasApiKey,
     clearResult,
   } = useOptimize();
 
+  const [isLocalOptimizing, setIsLocalOptimizing] = useState(false);
   const createPrompt = usePromptStore((s) => s.createPrompt);
   const settings = useSettingsStore();
   const setOptimizedPrompt = useOptimizeStore((s) => s.setResult);
@@ -61,9 +60,48 @@ export default function Optimize() {
     }
   }, [location.state, setInputPrompt, setOptimizedPrompt]);
 
-  const handleOptimize = () => {
+  const handleOptimize = async () => {
     if (!inputPrompt.trim()) return;
-    optimize();
+    setIsLocalOptimizing(true);
+    try {
+      const request = {
+        prompt: inputPrompt,
+        context,
+        language: settings.optimizeLanguage,
+        style: selectedStyle,
+        provider: selectedProvider,
+        model: selectedModel,
+      };
+      let result;
+      if (selectedProvider === 'custom') {
+        const { customService } = await import('@/services/llm/custom');
+        result = await customService.optimize(request, settings.apiKeys.custom || '', settings.customBaseUrl || 'https://api.xxdlzs.top');
+      } else if (selectedProvider === 'claude') {
+        const { ClaudeService } = await import('@/services/llm/claude');
+        const svc = new ClaudeService();
+        result = await svc.optimize(request, settings.apiKeys.claude || '');
+      } else {
+        const { OpenAIService } = await import('@/services/llm/openai');
+        const svc = new OpenAIService();
+        result = await svc.optimize(request, settings.apiKeys.openai || '');
+      }
+      useOptimizeStore.getState().setResult({
+        optimized: result.optimizedPrompt,
+        explanation: result.explanation,
+        suggestions: result.suggestions,
+      });
+      useOptimizeStore.getState().addToHistory({
+        input: inputPrompt,
+        output: result.optimizedPrompt,
+        provider: selectedProvider,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Optimization failed';
+      useOptimizeStore.getState().setError(message);
+    } finally {
+      setIsLocalOptimizing(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -241,13 +279,13 @@ export default function Optimize() {
             <div className="flex items-center gap-3 shrink-0">
               <Button
                 onClick={handleOptimize}
-                loading={isOptimizing}
+                loading={isLocalOptimizing}
                 disabled={!inputPrompt.trim() || !hasApiKey}
                 size="lg"
                 className="flex-1"
               >
                 <Sparkles size={18} />
-                {isOptimizing ? t('optimize.optimizing') : t('optimize.optimizeButton')}
+                {isLocalOptimizing ? t('optimize.optimizing') : t('optimize.optimizeButton')}
               </Button>
               {optimizedPrompt && (
                 <Button variant="ghost" onClick={clearResult} size="lg">
@@ -325,7 +363,7 @@ export default function Optimize() {
                 </div>
               )}
             </div>
-          ) : isOptimizing ? (
+          ) : isLocalOptimizing ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
               <div className="relative w-16 h-16">
                 <div className="absolute inset-0 rounded-full border-4 border-surface-3 dark:border-dark-3" />
