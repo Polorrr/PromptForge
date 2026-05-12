@@ -14,13 +14,16 @@ export class OpenAIService {
   ): Promise<OptimizeResponse> {
     const client = this.getClient(apiKey);
     const systemPrompt = META_PROMPT(request.language, request.style);
+    const userMessage = request.context
+      ? `[CONTEXT]\n${request.context}\n[/CONTEXT]\n\n[ORIGINAL PROMPT]\n${request.prompt}\n[/ORIGINAL PROMPT]`
+      : request.prompt;
 
     if (onChunk) {
       const stream = await client.chat.completions.create({
         model: request.model || 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: request.prompt },
+          { role: 'user', content: userMessage },
         ],
         temperature: 0.7,
         max_tokens: 2048,
@@ -42,7 +45,7 @@ export class OpenAIService {
       model: request.model || 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: request.prompt },
+        { role: 'user', content: userMessage },
       ],
       temperature: 0.7,
       max_tokens: 2048,

@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import type { OptimizeRequest, OptimizeResponse, StreamChunk } from '@/types/llm';
 import { META_PROMPT } from './meta-prompt';
-import { NVIDIA_BASE_URL, isNvidiaApiKey } from '@/constants/models';
+import { isNvidiaApiKey } from '@/constants/models';
 
 const PROXY_URL = 'http://localhost:3456/nvidia';
 
@@ -14,24 +14,107 @@ function normalizeBaseUrl(url: string): string {
 }
 
 export class CustomService {
-  private getClient(apiKey: string, baseUrl: string) {
-    const useNvidia = isNvidiaApiKey(apiKey);
-    const finalBaseUrl = useNvidia ? PROXY_URL : baseUrl;
-    return new OpenAI({
-      apiKey,
-      baseURL: useNvidia ? PROXY_URL : normalizeBaseUrl(finalBaseUrl),
-      dangerouslyAllowBrowser: true,
-    });
-  }
-
   async optimize(
     request: OptimizeRequest,
     apiKey: string,
     baseUrl: string,
     onChunk?: (chunk: StreamChunk) => void
   ): Promise<OptimizeResponse> {
-    const client = this.getClient(apiKey, baseUrl);
     const systemPrompt = META_PROMPT(request.language, request.style);
+    const useNvidia = isNvidiaApiKey(apiKey);
+
+    if (useNvidia) {
+      return this.optimizeViaSdk(request, apiKey, systemPrompt, onChunk);
+    }
+
+    const url = normalizeBaseUrl(baseUrl) + '/chat/completions';
+    const userMessage = request.context
+      ? `[CONTEXT]\n${request.context}\n[/CONTEXT]\n\n[ORIGINAL PROMPT]\n${request.prompt}\n[/ORIGINAL PROMPT]`
+      : request.prompt;
+    const body = {
+      model: request.model || 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: 0.7,
+      max_tokens: 2048,
+      stream: !!onChunk,
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => '');
+      throw new Error(`API error ${res.status}: ${err}`);
+    }
+
+    if (onChunk) {
+      return this.handleStream(res, request, onChunk);
+    }
+
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    return this.parseResponse(content, request);
+  }
+
+  private async handleStream(
+    res: Response,
+    request: OptimizeRequest,
+    onChunk: (chunk: StreamChunk) => void
+  ): Promise<OptimizeResponse> {
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          const content = parsed.choices?.[0]?.delta?.content || '';
+          if (content) {
+            fullText += content;
+            onChunk({ type: 'text', content });
+          }
+        } catch { /* skip malformed chunks */ }
+      }
+    }
+
+    return this.parseResponse(fullText, request);
+  }
+
+  private async optimizeViaSdk(
+    request: OptimizeRequest,
+    apiKey: string,
+    systemPrompt: string,
+    onChunk?: (chunk: StreamChunk) => void
+  ): Promise<OptimizeResponse> {
+    const client = new OpenAI({
+      apiKey,
+      baseURL: PROXY_URL,
+      dangerouslyAllowBrowser: true,
+    });
 
     if (onChunk) {
       const stream = await client.chat.completions.create({

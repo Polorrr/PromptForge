@@ -15,18 +15,18 @@ export const MODELS: ModelOption[] = [
 ];
 
 export const NVIDIA_MODELS: ModelOption[] = [
-  { id: 'meta/llama-3.1-405b-instruct', name: 'Llama 3.1 405B', provider: 'custom' },
-  { id: 'meta/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'custom' },
-  { id: 'meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'custom' },
   { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'custom' },
-  { id: 'mistralai/mixtral-8x22b-instruct-v0.1', name: 'Mixtral 8x22B', provider: 'custom' },
-  { id: 'mistralai/mixtral-8x7b-instruct-v0.1', name: 'Mixtral 8x7B', provider: 'custom' },
-  { id: 'mistralai/mistral-large-latest', name: 'Mistral Large', provider: 'custom' },
-  { id: 'google/gemma-2-27b-it', name: 'Gemma 2 27B', provider: 'custom' },
-  { id: 'nvidia/nemotron-4-340b-instruct', name: 'Nemotron 4 340B', provider: 'custom' },
-  { id: 'deepseek-ai/deepseek-r1', name: 'DeepSeek R1', provider: 'custom' },
-  { id: 'deepseek-ai/deepseek-v3', name: 'DeepSeek V3', provider: 'custom' },
-  { id: 'qwen/qwen2.5-72b-instruct', name: 'Qwen 2.5 72B', provider: 'custom' },
+  { id: 'meta/llama-4-maverick-17b-128e-instruct', name: 'Llama 4 Maverick 17B', provider: 'custom' },
+  { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'Nemotron 70B', provider: 'custom' },
+  { id: 'nvidia/llama-3.3-nemotron-super-49b-v1.5', name: 'Nemotron Super 49B', provider: 'custom' },
+  { id: 'deepseek-ai/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'custom' },
+  { id: 'deepseek-ai/deepseek-v4-pro', name: 'DeepSeek V4 Pro', provider: 'custom' },
+  { id: 'mistralai/mistral-large', name: 'Mistral Large', provider: 'custom' },
+  { id: 'mistralai/mistral-large-2-instruct', name: 'Mistral Large 2', provider: 'custom' },
+  { id: 'qwen/qwen3.5-397b-a17b', name: 'Qwen 3.5 397B', provider: 'custom' },
+  { id: 'qwen/qwen3.5-122b-a10b', name: 'Qwen 3.5 122B', provider: 'custom' },
+  { id: 'google/gemma-3-12b-it', name: 'Gemma 3 12B', provider: 'custom' },
+  { id: 'google/gemma-4-31b-it', name: 'Gemma 4 31B', provider: 'custom' },
 ];
 
 export const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';

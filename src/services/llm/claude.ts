@@ -8,6 +8,9 @@ export class ClaudeService {
     onChunk?: (chunk: StreamChunk) => void
   ): Promise<OptimizeResponse> {
     const systemPrompt = META_PROMPT(request.language, request.style);
+    const userMessage = request.context
+      ? `[CONTEXT]\n${request.context}\n[/CONTEXT]\n\n[ORIGINAL PROMPT]\n${request.prompt}\n[/ORIGINAL PROMPT]`
+      : request.prompt;
 
     const response = await fetch('/api/claude', {
       method: 'POST',
@@ -16,7 +19,7 @@ export class ClaudeService {
         apiKey,
         model: request.model || 'claude-sonnet-4-20250514',
         system: systemPrompt,
-        prompt: request.prompt,
+        prompt: userMessage,
         maxTokens: 2048,
         stream: !!onChunk,
       }),

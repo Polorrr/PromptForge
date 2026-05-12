@@ -20,7 +20,12 @@ const server = http.createServer((req, res) => {
 
   // Extract the target path after /nvidia/
   const parsedUrl = url.parse(req.url);
-  const path = parsedUrl.pathname.replace(/^\/nvidia/, '');
+  let path = parsedUrl.pathname.replace(/^\/nvidia/, '');
+
+  // Add /v1 prefix if not already present
+  if (!path.startsWith('/v1')) {
+    path = '/v1' + path;
+  }
 
   // Build target URL
   const targetUrl = `${NVIDIA_API}${path}${parsedUrl.search || ''}`;
