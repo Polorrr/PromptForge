@@ -3,6 +3,8 @@ import type { OptimizeRequest, OptimizeResponse, StreamChunk } from '@/types/llm
 import { META_PROMPT } from './meta-prompt';
 import { NVIDIA_BASE_URL, isNvidiaApiKey } from '@/constants/models';
 
+const PROXY_URL = 'http://localhost:3456/nvidia';
+
 function normalizeBaseUrl(url: string): string {
   let u = url.trim().replace(/\/+$/, '');
   if (!u.endsWith('/v1')) {
@@ -13,10 +15,11 @@ function normalizeBaseUrl(url: string): string {
 
 export class CustomService {
   private getClient(apiKey: string, baseUrl: string) {
-    const finalBaseUrl = isNvidiaApiKey(apiKey) ? NVIDIA_BASE_URL : baseUrl;
+    const useNvidia = isNvidiaApiKey(apiKey);
+    const finalBaseUrl = useNvidia ? PROXY_URL : baseUrl;
     return new OpenAI({
       apiKey,
-      baseURL: normalizeBaseUrl(finalBaseUrl),
+      baseURL: useNvidia ? PROXY_URL : normalizeBaseUrl(finalBaseUrl),
       dangerouslyAllowBrowser: true,
     });
   }

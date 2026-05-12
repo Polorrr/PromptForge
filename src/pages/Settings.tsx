@@ -57,12 +57,13 @@ export default function Settings() {
         const isNvidia = key.startsWith('nvapi-');
         if (isNvidia) {
           try {
-            const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
+            const res = await fetch('http://localhost:3456/nvidia/v1/models', {
               headers: { Authorization: `Bearer ${key}` },
             });
             setTestResult((prev) => ({ ...prev, [provider]: res.ok }));
+            setConnectionError(null);
           } catch {
-            setConnectionError(t('settings.nvidiaCorsError'));
+            setConnectionError(t('settings.nvidiaProxyError'));
             setTestResult((prev) => ({ ...prev, [provider]: false }));
           }
         } else {

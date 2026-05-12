@@ -6,6 +6,8 @@
   "description": "AI Prompt Optimizer & Library",
   "scripts": {
     "dev": "vite",
+    "proxy": "node proxy.cjs",
+    "dev:nvidia": "node proxy.cjs & vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint ."
