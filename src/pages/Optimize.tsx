@@ -134,13 +134,6 @@ export default function Optimize() {
     }
   };
 
-  const handleCopyHistory = async (entry: { input: string; output: string; explanation: string; suggestions: string[] }) => {
-    const text = `【原始提示词】\n${entry.input}\n\n【优化后提示词】\n${entry.output}\n\n【改动说明】\n${entry.explanation}\n\n【进一步建议】\n${entry.suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
-    if (await copyToClipboard(text)) {
-      toast('success', t('common.copied'));
-    }
-  };
-
   const handleSave = async () => {
     if (!optimizedPrompt) return;
     await createPrompt({
@@ -442,7 +435,11 @@ export default function Optimize() {
                   key={i}
                   onClick={() => {
                     setInputPrompt(h.input);
-                    handleCopyHistory(h);
+                    setOptimizedPrompt({
+                      optimized: h.output,
+                      explanation: h.explanation,
+                      suggestions: h.suggestions,
+                    });
                   }}
                   className="shrink-0 w-64 text-left p-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 hover:border-brand-400 dark:hover:border-brand-600 hover:shadow-elevated transition-all"
                 >
