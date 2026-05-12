@@ -159,6 +159,7 @@
     "testConnection": "Test Connection",
     "connectionSuccess": "Connection successful!",
     "connectionFailed": "Connection failed",
+    "nvidiaCorsError": "NVIDIA API doesn't support direct browser calls (CORS restriction). Please use an API relay or backend proxy. Optimization still works as requests are sent via OpenAI SDK.",
     "securityNote": "Your API keys are stored locally in your browser and never sent to our servers.",
     "defaultModel": "Default Model",
     "display": "Display",

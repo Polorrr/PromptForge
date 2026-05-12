@@ -33,6 +33,7 @@ export default function Settings() {
   const [testResult, setTestResult] = useState<Record<string, boolean>>({});
   const [newConfigName, setNewConfigName] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<'openai' | 'claude' | 'custom'>('openai');
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const toggleShowKey = (provider: string) => {
     setShowKeys((prev) => ({ ...prev, [provider]: !prev[provider] }));
@@ -41,6 +42,7 @@ export default function Settings() {
   const testConnection = async (provider: 'openai' | 'claude' | 'custom') => {
     setTesting(provider);
     setTestResult((prev) => ({ ...prev, [provider]: false }));
+    setConnectionError(null);
 
     try {
       const key = settings.apiKeys[provider];
@@ -52,18 +54,31 @@ export default function Settings() {
         });
         setTestResult((prev) => ({ ...prev, [provider]: res.ok }));
       } else if (provider === 'custom') {
-        let baseUrl = (settings.customBaseUrl || 'https://api.xxdlzs.top').trim().replace(/\/+$/, '');
-        if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
-        let res = await fetch(`${baseUrl}/models`, {
-          headers: { Authorization: `Bearer ${key}` },
-        });
-        if (!res.ok) {
-          const base2 = baseUrl.replace(/\/v1$/, '');
-          res = await fetch(`${base2}/v1/models`, {
+        const isNvidia = key.startsWith('nvapi-');
+        if (isNvidia) {
+          try {
+            const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
+              headers: { Authorization: `Bearer ${key}` },
+            });
+            setTestResult((prev) => ({ ...prev, [provider]: res.ok }));
+          } catch {
+            setConnectionError(t('settings.nvidiaCorsError'));
+            setTestResult((prev) => ({ ...prev, [provider]: false }));
+          }
+        } else {
+          let baseUrl = (settings.customBaseUrl || 'https://api.xxdlzs.top').trim().replace(/\/+$/, '');
+          if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
+          let res = await fetch(`${baseUrl}/models`, {
             headers: { Authorization: `Bearer ${key}` },
           });
+          if (!res.ok) {
+            const base2 = baseUrl.replace(/\/v1$/, '');
+            res = await fetch(`${base2}/v1/models`, {
+              headers: { Authorization: `Bearer ${key}` },
+            });
+          }
+          setTestResult((prev) => ({ ...prev, [provider]: res.ok }));
         }
-        setTestResult((prev) => ({ ...prev, [provider]: res.ok }));
       } else {
         const res = await fetch('/api/claude', {
           method: 'POST',
@@ -291,6 +306,9 @@ export default function Settings() {
                 />
                 <p className="text-xs text-gray-400 mt-1">{t('settings.customBaseUrlHint')}</p>
               </div>
+              {connectionError && (
+                <p className="text-xs text-amber-500 dark:text-amber-400 mt-2">{connectionError}</p>
+              )}
             </div>
           </div>
 

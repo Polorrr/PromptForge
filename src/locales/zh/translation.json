@@ -159,6 +159,7 @@
     "testConnection": "测试连接",
     "connectionSuccess": "连接成功！",
     "connectionFailed": "连接失败",
+    "nvidiaCorsError": "NVIDIA API 不支持浏览器直接调用（CORS 限制）。请使用 API 中转站或后端代理。优化功能仍可正常使用，因为实际请求通过 OpenAI SDK 发送。",
     "securityNote": "你的 API Key 仅存储在浏览器本地，不会发送到我们的服务器。",
     "defaultModel": "默认模型",
     "display": "显示",
