@@ -9,6 +9,8 @@ import {
   Upload,
   Trash2,
   ExternalLink,
+  Save,
+  Database,
 } from 'lucide-react';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { usePromptStore } from '@/stores/usePromptStore';
@@ -29,6 +31,8 @@ export default function Settings() {
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, boolean>>({});
+  const [newConfigName, setNewConfigName] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'claude' | 'custom'>('openai');
 
   const toggleShowKey = (provider: string) => {
     setShowKeys((prev) => ({ ...prev, [provider]: !prev[provider] }));
@@ -320,6 +324,101 @@ export default function Settings() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* API Library */}
+      <section>
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Database size={18} />
+          {t('settings.apiLibrary')}
+        </h2>
+        <p className="text-xs text-gray-500 mb-4">{t('settings.apiLibraryDesc')}</p>
+
+        {/* Save current config */}
+        <div className="rounded-lg border border-surface-3 dark:border-dark-3 p-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <select
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value as 'openai' | 'claude' | 'custom')}
+              className="h-8 px-2 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="openai">OpenAI</option>
+              <option value="claude">Claude</option>
+              <option value="custom">{t('optimize.providerRelay')}</option>
+            </select>
+            <input
+              type="text"
+              value={newConfigName}
+              onChange={(e) => setNewConfigName(e.target.value)}
+              placeholder={t('settings.configNamePlaceholder')}
+              className="flex-1 h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (!newConfigName.trim()) return;
+                const key = settings.apiKeys[selectedProvider];
+                if (!key) {
+                  toast('error', t('settings.noApiKeyToSave'));
+                  return;
+                }
+                settings.saveApiConfig({
+                  name: newConfigName.trim(),
+                  provider: selectedProvider,
+                  apiKey: key,
+                  baseUrl: selectedProvider === 'custom' ? settings.customBaseUrl : undefined,
+                });
+                setNewConfigName('');
+                toast('success', t('settings.configSaved'));
+              }}
+              disabled={!newConfigName.trim()}
+            >
+              <Save size={14} />
+              {t('common.save')}
+            </Button>
+          </div>
+        </div>
+
+        {/* Saved configs list */}
+        {settings.apiLibrary.length > 0 ? (
+          <div className="space-y-2">
+            {settings.apiLibrary.map((config) => (
+              <div
+                key={config.id}
+                className="flex items-center justify-between p-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{config.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {config.provider.toUpperCase()} • {config.apiKey.slice(0, 8)}...
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      settings.loadApiConfig(config.id);
+                      toast('success', t('settings.configLoaded'));
+                    }}
+                  >
+                    {t('common.load')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => settings.deleteApiConfig(config.id)}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 text-center py-4">{t('settings.noSavedConfigs')}</p>
+        )}
       </section>
 
       {/* Display */}

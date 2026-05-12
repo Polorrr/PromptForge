@@ -20,7 +20,8 @@
     "export": "Export",
     "import": "Import",
     "close": "Close",
-    "retry": "Retry"
+    "retry": "Retry",
+    "load": "Load"
   },
   "nav": {
     "home": "Home",
@@ -170,6 +171,13 @@
     "importPrompts": "Import Prompts",
     "clearAll": "Clear All Data",
     "clearAllConfirm": "This will permanently delete all your prompts. Are you sure?",
+    "apiLibrary": "API Library",
+    "apiLibraryDesc": "Save and manage different API configurations for quick switching.",
+    "configNamePlaceholder": "Config name...",
+    "noApiKeyToSave": "Please fill in the API key first",
+    "configSaved": "Config saved",
+    "configLoaded": "Config loaded",
+    "noSavedConfigs": "No saved configs yet",
     "about": "About",
     "version": "Version"
   },

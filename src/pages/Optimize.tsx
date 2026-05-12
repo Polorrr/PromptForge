@@ -286,7 +286,7 @@ export default function Optimize() {
               </div>
             </div>
 
-            <div>
+            <div className="flex flex-col">
               <label className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t('optimize.contextLabel')}
               </label>

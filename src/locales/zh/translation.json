@@ -20,7 +20,8 @@
     "export": "导出",
     "import": "导入",
     "close": "关闭",
-    "retry": "重试"
+    "retry": "重试",
+    "load": "加载"
   },
   "nav": {
     "home": "首页",
@@ -170,6 +171,13 @@
     "importPrompts": "导入提示词",
     "clearAll": "清除所有数据",
     "clearAllConfirm": "这将永久删除所有提示词。确定吗？",
+    "apiLibrary": "API 库",
+    "apiLibraryDesc": "保存和管理不同的 API 配置，方便快速切换。",
+    "configNamePlaceholder": "配置名称...",
+    "noApiKeyToSave": "请先填写 API Key",
+    "configSaved": "配置已保存",
+    "configLoaded": "配置已加载",
+    "noSavedConfigs": "暂无保存的配置",
     "about": "关于",
     "version": "版本"
   },

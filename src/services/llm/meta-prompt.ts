@@ -19,14 +19,17 @@ export function META_PROMPT(
 ): string {
   const langInstruction =
     outputLanguage === 'same'
-      ? 'Respond in the same language as the input prompt.'
+      ? 'Use the same language as the input prompt for ALL fields in the JSON response (optimizedPrompt, explanation, suggestions).'
       : outputLanguage === 'zh'
-        ? 'Respond in Chinese (Simplified).'
-        : 'Respond in English.';
+        ? 'You MUST respond entirely in Chinese (Simplified). ALL fields in the JSON response (optimizedPrompt, explanation, suggestions) must be written in Chinese.'
+        : 'You MUST respond entirely in English. ALL fields in the JSON response (optimizedPrompt, explanation, suggestions) must be written in English.';
 
   const styleInstruction = STYLE_INSTRUCTIONS[style];
 
   return `You are PromptForge, an expert prompt engineer. Your task is to take a rough, incomplete, or poorly structured prompt and transform it into a high-quality, optimized prompt.
+
+## CRITICAL: Output Language
+${langInstruction}
 
 ## Optimization Style
 ${styleInstruction}
