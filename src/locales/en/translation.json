@@ -69,6 +69,7 @@
     "providerOpenai": "OpenAI",
     "providerClaude": "Claude",
     "providerRelay": "API Relay",
+    "nvidiaHint": "NVIDIA API Key detected, NVIDIA model list loaded automatically",
     "charCount": "{{count}} characters",
     "style": "Style",
     "styleDefault": "Default",

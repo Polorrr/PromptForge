@@ -11,7 +11,7 @@ import { Button } from '@/components/ui';
 import { Textarea } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { copyToClipboard } from '@/utils/copy';
-import { MODELS } from '@/constants/models';
+import { MODELS, NVIDIA_MODELS, isNvidiaApiKey } from '@/constants/models';
 import { cn } from '@/utils/cn';
 import { useState, useMemo } from 'react';
 import type { OptimizeStyle } from '@/types/llm';
@@ -157,7 +157,16 @@ export default function Optimize() {
     toast('success', t('optimize.saveToLibrary') + ' ✓');
   };
 
-  const filteredModels = MODELS.filter((m) => m.provider === selectedProvider);
+  const filteredModels = useMemo(() => {
+    if (selectedProvider === 'custom') {
+      const customKey = settings.apiKeys.custom || '';
+      if (isNvidiaApiKey(customKey)) {
+        return NVIDIA_MODELS;
+      }
+      return [];
+    }
+    return MODELS.filter((m) => m.provider === selectedProvider);
+  }, [selectedProvider, settings.apiKeys.custom]);
 
   return (
     <div className="h-full flex flex-col" onKeyDown={handleKeyDown}>
@@ -187,7 +196,19 @@ export default function Optimize() {
           {/* Model selector */}
           {selectedProvider === 'custom' ? (
             <div className="flex items-center gap-1">
-              {relayModels.length > 0 && selectedModel !== '__manual__' ? (
+              {isNvidiaApiKey(settings.apiKeys.custom || '') ? (
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500 max-w-[250px]"
+                >
+                  {NVIDIA_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              ) : relayModels.length > 0 && selectedModel !== '__manual__' ? (
                 <select
                   value={selectedModel}
                   onChange={(e) => {
@@ -218,14 +239,16 @@ export default function Optimize() {
                   className="h-8 w-44 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               )}
-              <button
-                onClick={reloadRelayModels}
-                disabled={relayLoading}
-                className="p-1.5 rounded-lg hover:bg-surface-2 dark:hover:bg-dark-2 text-gray-400 hover:text-gray-600 transition-colors"
-                title={t('optimize.refreshModels')}
-              >
-                <RefreshCw size={14} className={relayLoading ? 'animate-spin' : ''} />
-              </button>
+              {!isNvidiaApiKey(settings.apiKeys.custom || '') && (
+                <button
+                  onClick={reloadRelayModels}
+                  disabled={relayLoading}
+                  className="p-1.5 rounded-lg hover:bg-surface-2 dark:hover:bg-dark-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  title={t('optimize.refreshModels')}
+                >
+                  <RefreshCw size={14} className={relayLoading ? 'animate-spin' : ''} />
+                </button>
+              )}
             </div>
           ) : (
             <select
@@ -298,6 +321,10 @@ export default function Optimize() {
                 className="w-full h-10 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 px-3 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors"
               />
             </div>
+
+            {selectedProvider === 'custom' && isNvidiaApiKey(settings.apiKeys.custom || '') && (
+              <p className="text-xs text-blue-500 dark:text-blue-400">{t('optimize.nvidiaHint')}</p>
+            )}
 
             {/* Action buttons */}
             <div className="flex items-center gap-3 shrink-0">

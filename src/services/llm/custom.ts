@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import type { OptimizeRequest, OptimizeResponse, StreamChunk } from '@/types/llm';
 import { META_PROMPT } from './meta-prompt';
+import { NVIDIA_BASE_URL, isNvidiaApiKey } from '@/constants/models';
 
 function normalizeBaseUrl(url: string): string {
   let u = url.trim().replace(/\/+$/, '');
@@ -12,9 +13,10 @@ function normalizeBaseUrl(url: string): string {
 
 export class CustomService {
   private getClient(apiKey: string, baseUrl: string) {
+    const finalBaseUrl = isNvidiaApiKey(apiKey) ? NVIDIA_BASE_URL : baseUrl;
     return new OpenAI({
       apiKey,
-      baseURL: normalizeBaseUrl(baseUrl),
+      baseURL: normalizeBaseUrl(finalBaseUrl),
       dangerouslyAllowBrowser: true,
     });
   }
@@ -103,6 +105,10 @@ export interface RelayModel {
 }
 
 export async function fetchRelayModels(apiKey: string, baseUrl: string): Promise<RelayModel[]> {
+  if (isNvidiaApiKey(apiKey)) {
+    return [];
+  }
+
   let url = baseUrl.trim().replace(/\/+$/, '');
   if (!url.endsWith('/v1')) url += '/v1';
 

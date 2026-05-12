@@ -69,6 +69,7 @@
     "providerOpenai": "OpenAI",
     "providerClaude": "Claude",
     "providerRelay": "API 中转",
+    "nvidiaHint": "检测到 NVIDIA API Key，已自动配置 NVIDIA 模型列表",
     "charCount": "{{count}} 个字符",
     "style": "优化风格",
     "styleDefault": "默认",
