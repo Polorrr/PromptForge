@@ -6,6 +6,7 @@ export interface Prompt {
   originalText: string;
   optimizedText: string;
   explanation: string;
+  suggestions: string[];
   category: string;
   tags: string[];
   provider: LLMProvider;
@@ -23,6 +24,7 @@ export interface PromptVersion {
   version: number;
   text: string;
   explanation: string;
+  suggestions: string[];
   provider: LLMProvider;
   model: string;
   createdAt: string;

@@ -260,7 +260,12 @@ export default function PromptDetail() {
           <ExternalLink size={16} />
           {t('detail.createGist')}
         </Button>
-        <Link to={ROUTES.OPTIMIZE} state={{ prefill: prompt.originalText, prefillResult: prompt.optimizedText }}>
+        <Link to={ROUTES.OPTIMIZE} state={{
+          prefill: prompt.originalText,
+          prefillResult: prompt.optimizedText,
+          prefillExplanation: prompt.explanation,
+          prefillSuggestions: prompt.suggestions || [],
+        }}>
           <Button variant="secondary">
             <Edit3 size={16} />
             {t('optimize.reOptimize')}

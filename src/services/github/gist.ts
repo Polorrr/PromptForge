@@ -66,6 +66,7 @@ export const gistService = {
       originalText: content.original || '',
       optimizedText: content.prompt,
       explanation: content.explanation || '',
+      suggestions: content.suggestions || [],
       category: content.category || 'imported',
       tags: content.tags || [],
       provider: 'openai',

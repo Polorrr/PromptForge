@@ -66,10 +66,16 @@ export default function Optimize() {
   useEffect(() => {
     const prefill = location.state?.prefill as string | undefined;
     const prefillResult = location.state?.prefillResult as string | undefined;
+    const prefillExplanation = location.state?.prefillExplanation as string | undefined;
+    const prefillSuggestions = location.state?.prefillSuggestions as string[] | undefined;
     if (prefill) {
       setInputPrompt(prefill);
       if (prefillResult) {
-        setOptimizedPrompt({ optimized: prefillResult, explanation: '', suggestions: [] });
+        setOptimizedPrompt({
+          optimized: prefillResult,
+          explanation: prefillExplanation || '',
+          suggestions: prefillSuggestions || [],
+        });
       }
       window.history.replaceState({}, '');
     }
@@ -141,6 +147,7 @@ export default function Optimize() {
       originalText: inputPrompt,
       optimizedText: optimizedPrompt,
       explanation,
+      suggestions,
       category: 'other',
       tags: [],
       provider: selectedProvider,

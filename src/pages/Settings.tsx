@@ -102,6 +102,7 @@ export default function Settings() {
               originalText: item.originalText,
               optimizedText: item.optimizedText,
               explanation: item.explanation || '',
+              suggestions: item.suggestions || [],
               category: item.category || 'other',
               tags: item.tags || [],
               provider: (item.provider as 'openai' | 'claude' | 'custom') || 'openai',
