@@ -450,7 +450,7 @@ export default function Settings() {
             <select
               value={app.language ?? 'en'}
               onChange={(e) => handleLanguageChange(e.target.value as 'en' | 'zh')}
-              className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-32 h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="en">English</option>
               <option value="zh">中文</option>
@@ -465,7 +465,7 @@ export default function Settings() {
               onChange={(e) =>
                 app.setTheme(e.target.value as 'light' | 'dark' | 'system')
               }
-              className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-32 h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="light">{t('settings.light')}</option>
               <option value="dark">{t('settings.dark')}</option>

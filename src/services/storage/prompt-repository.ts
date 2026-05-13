@@ -27,6 +27,10 @@ export const promptRepository = {
     return id;
   },
 
+  async findByOriginalText(originalText: string): Promise<Prompt | undefined> {
+    return db.prompts.where('originalText').equals(originalText).first();
+  },
+
   async update(id: string, changes: Partial<Prompt>): Promise<number> {
     return db.prompts.update(id, {
       ...changes,

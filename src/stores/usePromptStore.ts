@@ -13,7 +13,7 @@ interface PromptState {
   isLoading: boolean;
   loadPrompts: () => Promise<void>;
   loadPrompt: (id: string) => Promise<void>;
-  createPrompt: (prompt: Omit<Prompt, 'id' | 'createdAt' | 'updatedAt' | 'version' | 'history'>) => Promise<string>;
+  createPrompt: (prompt: Omit<Prompt, 'id' | 'createdAt' | 'updatedAt' | 'version' | 'history'>) => Promise<{ id: string; isDuplicate: boolean }>;
   updatePrompt: (id: string, changes: Partial<Prompt>) => Promise<void>;
   deletePrompt: (id: string) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
@@ -47,9 +47,13 @@ export const usePromptStore = create<PromptState>((set, get) => ({
   },
 
   createPrompt: async (prompt) => {
+    const existing = await promptRepository.findByOriginalText(prompt.originalText);
+    if (existing) {
+      return { id: existing.id, isDuplicate: true };
+    }
     const id = await promptRepository.create(prompt);
     await get().loadPrompts();
-    return id;
+    return { id, isDuplicate: false };
   },
 
   updatePrompt: async (id, changes) => {

@@ -34,9 +34,17 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="h-14 flex items-center border-b border-surface-2 dark:border-dark-3" style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center', padding: sidebarOpen ? '0 16px' : '0' }}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-            P
-          </div>
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+            <rect width="32" height="32" rx="8" fill="url(#gradient)"/>
+            <path d="M10 8h6c3.3 0 6 2.7 6 6s-2.7 6-6 6h-2v4h-2V8zm2 2v8h4c2.2 0 4-1.8 4-4s-1.8-4-4-4h-4z" fill="white"/>
+            <path d="M22 10l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.8"/>
+            <defs>
+              <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
+                <stop stopColor="#6366f1"/>
+                <stop offset="1" stopColor="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+          </svg>
           {sidebarOpen && (
             <span className="font-semibold text-sm truncate">PromptForge</span>
           )}

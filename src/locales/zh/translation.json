@@ -56,6 +56,7 @@
     "explanationLabel": "改动说明",
     "suggestionsLabel": "进一步建议",
     "saveToLibrary": "保存到库",
+    "alreadySaved": "该提示词已保存过了",
     "reOptimize": "重新优化",
     "comparison": "对比查看",
     "selectProvider": "选择 AI 服务商",

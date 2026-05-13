@@ -56,6 +56,7 @@
     "explanationLabel": "What changed and why",
     "suggestionsLabel": "Further suggestions",
     "saveToLibrary": "Save to Library",
+    "alreadySaved": "This prompt is already saved",
     "reOptimize": "Re-optimize",
     "comparison": "Side-by-side comparison",
     "selectProvider": "Select AI provider",

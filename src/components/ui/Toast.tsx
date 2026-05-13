@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback, createContext, useContext, type ReactNode } from 'react';
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 interface Toast {
   id: string;
-  type: 'success' | 'error' | 'info';
+  type: 'success' | 'error' | 'info' | 'warning';
   message: string;
   dismissing?: boolean;
 }
@@ -52,7 +52,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
-  const Icon = toast.type === 'success' ? CheckCircle : toast.type === 'error' ? AlertCircle : Info;
+  const Icon = toast.type === 'success' ? CheckCircle : toast.type === 'error' ? AlertCircle : toast.type === 'warning' ? AlertTriangle : Info;
 
   return (
     <div
@@ -62,6 +62,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         {
           'bg-success/10 text-success border border-success/30 dark:border-success/40': toast.type === 'success',
           'bg-error/10 text-error border border-error/30 dark:border-error/40': toast.type === 'error',
+          'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800': toast.type === 'warning',
           'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300 border border-brand-200 dark:border-brand-800': toast.type === 'info',
         }
       )}

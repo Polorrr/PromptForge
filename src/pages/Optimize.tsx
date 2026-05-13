@@ -262,7 +262,7 @@ export default function Optimize() {
 
   const handleSave = async () => {
     if (!optimizedPrompt) return;
-    await createPrompt({
+    const result = await createPrompt({
       title: inputPrompt.slice(0, 50) + (inputPrompt.length > 50 ? '...' : ''),
       originalText: inputPrompt,
       optimizedText: optimizedPrompt,
@@ -274,7 +274,11 @@ export default function Optimize() {
       model: selectedModel,
       isFavorite: false,
     });
-    toast('success', t('optimize.saveToLibrary') + ' ✓');
+    if (result.isDuplicate) {
+      toast('warning', t('optimize.alreadySaved'));
+    } else {
+      toast('success', t('optimize.saveToLibrary') + ' ✓');
+    }
   };
 
   const filteredModels = useMemo(() => {
@@ -560,27 +564,25 @@ export default function Optimize() {
                       onClick={() => setInquiryIndex((prev) => Math.max(0, prev - 1))}
                       disabled={inquiryIndex === 0}
                       className={cn(
-                        'flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors',
+                        'p-2 rounded-lg transition-colors',
                         inquiryIndex === 0
                           ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                           : 'text-gray-600 dark:text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2'
                       )}
                     >
-                      <ChevronLeft size={14} />
-                      {t('optimize.previousQuestion')}
+                      <ChevronLeft size={18} />
                     </button>
                     <button
                       onClick={() => setInquiryIndex((prev) => Math.min(inquiryQuestions.length - 1, prev + 1))}
                       disabled={inquiryIndex === inquiryQuestions.length - 1}
                       className={cn(
-                        'flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors',
+                        'p-2 rounded-lg transition-colors',
                         inquiryIndex === inquiryQuestions.length - 1
                           ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                           : 'text-gray-600 dark:text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2'
                       )}
                     >
-                      {t('optimize.nextQuestion')}
-                      <ChevronRight size={14} />
+                      <ChevronRight size={18} />
                     </button>
                   </div>
                     </>
@@ -732,7 +734,7 @@ export default function Optimize() {
         <div className="border-t border-surface-2 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 shrink-0">
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="w-full px-4 sm:px-6 py-2.5 flex items-center justify-between text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2 transition-colors"
+            className="w-full px-4 sm:px-6 py-2.5 flex items-center justify-between text-sm font-medium text-gray-600 dark:text-gray-400 bg-surface-2 dark:bg-dark-2 hover:bg-surface-3 dark:hover:bg-dark-3 transition-colors"
           >
             <span className="flex items-center gap-2">
               <History size={14} />
@@ -744,7 +746,7 @@ export default function Optimize() {
             />
           </button>
           {showHistory && (
-            <div className="px-4 sm:px-6 pb-3 flex gap-3 overflow-x-auto max-h-40 items-start" style={{ animation: 'slideUp 0.3s ease-out' }}>
+            <div className="px-4 sm:px-6 py-6 flex gap-3 overflow-x-auto max-h-48 items-start" style={{ animation: 'slideUp 0.3s ease-out' }}>
               {sessionHistory.map((h, i) => (
                 <button
                   key={i}
