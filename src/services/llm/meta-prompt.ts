@@ -84,12 +84,18 @@ You MUST respond in the following exact JSON structure, wrapped in \`\`\`json co
 }
 
 export function INQUIRY_PROMPT(outputLanguage: 'en' | 'zh' | 'same'): string {
+  const isZh = outputLanguage === 'zh' || outputLanguage === 'same';
   const langInstruction =
     outputLanguage === 'same'
       ? 'Use the same language as the input prompt for ALL fields.'
       : outputLanguage === 'zh'
         ? 'You MUST respond entirely in Chinese (Simplified).'
         : 'You MUST respond entirely in English.';
+
+  const exampleQuestion = isZh ? '这个提示词的用途是什么？' : 'What is the purpose of this prompt?';
+  const exampleOptions = isZh
+    ? ['创意写作', '商务沟通', '教育学习', '其他']
+    : ['Creative writing', 'Business communication', 'Education', 'Other'];
 
   return `You are a helpful assistant. The user will give you a rough prompt idea. Your job is to ask 5-7 short, focused questions to understand their needs better before optimizing the prompt.
 
@@ -101,6 +107,7 @@ ${langInstruction}
 - Questions should cover: target audience, purpose/goal, desired tone, output format, length/scope, and any specific requirements.
 - Keep questions simple and direct — one sentence each.
 - Options should be short (2-5 words each).
+- IMPORTANT: Your questions and options MUST be in the same language as specified above. Do NOT mix languages.
 
 ## Output Format
 
@@ -109,8 +116,8 @@ Respond ONLY with valid JSON (no markdown fences):
 {
   "questions": [
     {
-      "question": "What is the purpose of this prompt?",
-      "options": ["Creative writing", "Business communication", "Education", "Other"]
+      "question": "${exampleQuestion}",
+      "options": [${exampleOptions.map((o) => `"${o}"`).join(', ')}]
     }
   ]
 `;
