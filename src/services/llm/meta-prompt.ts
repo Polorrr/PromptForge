@@ -84,13 +84,13 @@ You MUST respond in the following exact JSON structure, wrapped in \`\`\`json co
 }
 
 export function INQUIRY_PROMPT(outputLanguage: 'en' | 'zh' | 'same'): string {
-  const isZh = outputLanguage === 'zh' || outputLanguage === 'same';
-  const langInstruction =
-    outputLanguage === 'same'
-      ? 'Use the same language as the input prompt for ALL fields.'
-      : outputLanguage === 'zh'
-        ? 'You MUST respond entirely in Chinese (Simplified).'
-        : 'You MUST respond entirely in English.';
+  const isZh = outputLanguage === 'zh';
+  const isSame = outputLanguage === 'same';
+  const langInstruction = isSame
+    ? 'Use the SAME language as the user\'s input prompt for ALL your questions and options. If the user writes in English, respond in English. If the user writes in Chinese, respond in Chinese. Do NOT mix languages.'
+    : isZh
+      ? 'You MUST respond entirely in Chinese (Simplified). ALL questions and options must be written in Chinese. Do NOT use any English.'
+      : 'You MUST respond entirely in English. ALL questions and options must be written in English. Do NOT use any Chinese.';
 
   const exampleQuestion = isZh ? '这个提示词的用途是什么？' : 'What is the purpose of this prompt?';
   const exampleOptions = isZh
@@ -107,7 +107,7 @@ ${langInstruction}
 - Questions should cover: target audience, purpose/goal, desired tone, output format, length/scope, and any specific requirements.
 - Keep questions simple and direct — one sentence each.
 - Options should be short (2-5 words each).
-- IMPORTANT: Your questions and options MUST be in the same language as specified above. Do NOT mix languages.
+- CRITICAL: You MUST write questions and options in the language specified above. Violating this rule is unacceptable.
 
 ## Output Format
 

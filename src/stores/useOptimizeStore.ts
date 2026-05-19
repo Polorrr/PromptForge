@@ -3,6 +3,11 @@ import { persist } from 'zustand/middleware';
 import type { LLMProvider } from '@/types/settings';
 import type { OptimizeStyle } from '@/types/llm';
 
+interface InquiryQuestion {
+  question: string;
+  options: string[];
+}
+
 interface OptimizeState {
   inputPrompt: string;
   context: string;
@@ -15,6 +20,12 @@ interface OptimizeState {
   selectedProvider: LLMProvider;
   selectedModel: string;
   selectedStyle: OptimizeStyle;
+  contextMode: 'context' | 'inquiry';
+  showInquiry: boolean;
+  inquiryQuestions: InquiryQuestion[];
+  inquiryAnswers: Record<number, string>;
+  inquiryIndex: number;
+  inquiryLoading: boolean;
   sessionHistory: Array<{
     input: string;
     output: string;
@@ -32,6 +43,13 @@ interface OptimizeState {
   setStreaming: (val: boolean) => void;
   setResult: (result: { optimized: string; explanation: string; suggestions: string[] }) => void;
   setError: (error: string | null) => void;
+  setContextMode: (mode: 'context' | 'inquiry') => void;
+  setShowInquiry: (show: boolean) => void;
+  setInquiryQuestions: (questions: InquiryQuestion[]) => void;
+  setInquiryAnswers: (answers: Record<number, string>) => void;
+  setInquiryIndex: (index: number) => void;
+  setInquiryLoading: (loading: boolean) => void;
+  resetInquiry: () => void;
   addToHistory: (entry: { input: string; output: string; explanation: string; suggestions: string[]; provider: LLMProvider; timestamp: string }) => void;
   clearResult: () => void;
   reset: () => void;
@@ -51,6 +69,12 @@ export const useOptimizeStore = create<OptimizeState>()(
       selectedProvider: 'openai',
       selectedModel: 'gpt-4o',
       selectedStyle: 'default',
+      contextMode: 'context',
+      showInquiry: false,
+      inquiryQuestions: [],
+      inquiryAnswers: {},
+      inquiryIndex: 0,
+      inquiryLoading: false,
       sessionHistory: [],
 
       setInputPrompt: (inputPrompt) => set({ inputPrompt }),
@@ -60,6 +84,19 @@ export const useOptimizeStore = create<OptimizeState>()(
       setSelectedStyle: (selectedStyle) => set({ selectedStyle }),
       setOptimizing: (isOptimizing) => set({ isOptimizing }),
       setStreaming: (isStreaming) => set({ isStreaming }),
+      setContextMode: (contextMode) => set({ contextMode }),
+      setShowInquiry: (showInquiry) => set({ showInquiry }),
+      setInquiryQuestions: (inquiryQuestions) => set({ inquiryQuestions }),
+      setInquiryAnswers: (inquiryAnswers) => set({ inquiryAnswers }),
+      setInquiryIndex: (inquiryIndex) => set({ inquiryIndex }),
+      setInquiryLoading: (inquiryLoading) => set({ inquiryLoading }),
+      resetInquiry: () => set({
+        showInquiry: false,
+        inquiryQuestions: [],
+        inquiryAnswers: {},
+        inquiryIndex: 0,
+        inquiryLoading: false,
+      }),
       setResult: ({ optimized, explanation, suggestions }) =>
         set({
           optimizedPrompt: optimized,

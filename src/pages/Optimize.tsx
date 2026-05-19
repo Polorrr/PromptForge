@@ -26,11 +26,6 @@ function cleanMarkdown(text: string): string {
     .trim();
 }
 
-interface InquiryQuestion {
-  question: string;
-  options: string[];
-}
-
 export default function Optimize() {
   const { t } = useTranslation();
   const toast = useToast();
@@ -64,13 +59,19 @@ export default function Optimize() {
   const [manualModel, setManualModel] = useState('');
   const [useManualModel, setUseManualModel] = useState(false);
 
-  // Context mode: 'context' or 'inquiry'
-  const [contextMode, setContextMode] = useState<'context' | 'inquiry'>('context');
-  const [inquiryQuestions, setInquiryQuestions] = useState<InquiryQuestion[]>([]);
-  const [inquiryAnswers, setInquiryAnswers] = useState<Record<number, string>>({});
-  const [inquiryLoading, setInquiryLoading] = useState(false);
-  const [showInquiry, setShowInquiry] = useState(false);
-  const [inquiryIndex, setInquiryIndex] = useState(0);
+  const contextMode = useOptimizeStore((s) => s.contextMode);
+  const setContextMode = useOptimizeStore((s) => s.setContextMode);
+  const showInquiry = useOptimizeStore((s) => s.showInquiry);
+  const setShowInquiry = useOptimizeStore((s) => s.setShowInquiry);
+  const inquiryQuestions = useOptimizeStore((s) => s.inquiryQuestions);
+  const setInquiryQuestions = useOptimizeStore((s) => s.setInquiryQuestions);
+  const inquiryAnswers = useOptimizeStore((s) => s.inquiryAnswers);
+  const setInquiryAnswers = useOptimizeStore((s) => s.setInquiryAnswers);
+  const inquiryIndex = useOptimizeStore((s) => s.inquiryIndex);
+  const setInquiryIndex = useOptimizeStore((s) => s.setInquiryIndex);
+  const inquiryLoading = useOptimizeStore((s) => s.inquiryLoading);
+  const setInquiryLoading = useOptimizeStore((s) => s.setInquiryLoading);
+  const resetInquiry = useOptimizeStore((s) => s.resetInquiry);
 
   const cleanedPrompt = useMemo(() => {
     if (!optimizedPrompt) return '';
@@ -223,9 +224,7 @@ export default function Optimize() {
       setIsLocalOptimizing(true);
       try {
         await doOptimize(inputPrompt, fullContext);
-        setShowInquiry(false);
-        setInquiryQuestions([]);
-        setInquiryAnswers({});
+        resetInquiry();
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Optimization failed';
         useOptimizeStore.getState().setError(message);
@@ -470,10 +469,7 @@ export default function Optimize() {
                     type="button"
                     onClick={() => {
                       setContextMode(contextMode === 'inquiry' ? 'context' : 'inquiry');
-                      setShowInquiry(false);
-                      setInquiryQuestions([]);
-                      setInquiryAnswers({});
-                      setInquiryIndex(0);
+                      resetInquiry();
                     }}
                     className={cn(
                       'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2',
@@ -536,7 +532,7 @@ export default function Optimize() {
                       {inquiryQuestions[inquiryIndex]!.options.map((opt, j) => (
                       <button
                         key={j}
-                        onClick={() => setInquiryAnswers((prev) => ({ ...prev, [inquiryIndex]: opt }))}
+                        onClick={() => setInquiryAnswers({ ...inquiryAnswers, [inquiryIndex]: opt })}
                         className={cn(
                           'px-3 py-1.5 text-sm rounded-full border transition-colors',
                           inquiryAnswers[inquiryIndex] === opt
@@ -553,7 +549,7 @@ export default function Optimize() {
                   <input
                     type="text"
                     value={inquiryAnswers[inquiryIndex] || ''}
-                    onChange={(e) => setInquiryAnswers((prev) => ({ ...prev, [inquiryIndex]: e.target.value }))}
+                    onChange={(e) => setInquiryAnswers({ ...inquiryAnswers, [inquiryIndex]: e.target.value })}
                     placeholder={t('optimize.answerPlaceholder')}
                     className="w-full h-9 px-3 text-sm rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-brand-500 mb-3"
                   />
@@ -561,7 +557,7 @@ export default function Optimize() {
                   {/* Navigation */}
                   <div className="flex items-center justify-between mt-auto">
                     <button
-                      onClick={() => setInquiryIndex((prev) => Math.max(0, prev - 1))}
+                      onClick={() => setInquiryIndex(Math.max(0, inquiryIndex - 1))}
                       disabled={inquiryIndex === 0}
                       className={cn(
                         'p-2 rounded-lg transition-colors',
@@ -573,7 +569,7 @@ export default function Optimize() {
                       <ChevronLeft size={18} />
                     </button>
                     <button
-                      onClick={() => setInquiryIndex((prev) => Math.min(inquiryQuestions.length - 1, prev + 1))}
+                      onClick={() => setInquiryIndex(Math.min(inquiryQuestions.length - 1, inquiryIndex + 1))}
                       disabled={inquiryIndex === inquiryQuestions.length - 1}
                       className={cn(
                         'p-2 rounded-lg transition-colors',
