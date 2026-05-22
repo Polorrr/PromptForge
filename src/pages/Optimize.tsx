@@ -96,6 +96,13 @@ export default function Optimize() {
     }
   }, [location.state, setInputPrompt, setOptimizedPrompt]);
 
+  // Reset inquiry state when output language changes
+  useEffect(() => {
+    if (showInquiry) {
+      resetInquiry();
+    }
+  }, [settings.optimizeLanguage]);
+
   const doOptimize = async (promptText: string, contextText: string) => {
     const request = {
       prompt: promptText,
