@@ -26,7 +26,6 @@ interface OptimizeState {
   inquiryAnswers: Record<number, string>;
   inquiryIndex: number;
   inquiryLoading: boolean;
-  inquiryLanguage: 'en' | 'zh' | 'same' | null;
   sessionHistory: Array<{
     input: string;
     output: string;
@@ -50,7 +49,6 @@ interface OptimizeState {
   setInquiryAnswers: (answers: Record<number, string>) => void;
   setInquiryIndex: (index: number) => void;
   setInquiryLoading: (loading: boolean) => void;
-  setInquiryLanguage: (lang: 'en' | 'zh' | 'same' | null) => void;
   resetInquiry: () => void;
   addToHistory: (entry: { input: string; output: string; explanation: string; suggestions: string[]; provider: LLMProvider; timestamp: string }) => void;
   clearResult: () => void;
@@ -77,7 +75,6 @@ export const useOptimizeStore = create<OptimizeState>()(
       inquiryAnswers: {},
       inquiryIndex: 0,
       inquiryLoading: false,
-      inquiryLanguage: null,
       sessionHistory: [],
 
       setInputPrompt: (inputPrompt) => set({ inputPrompt }),
@@ -93,14 +90,12 @@ export const useOptimizeStore = create<OptimizeState>()(
       setInquiryAnswers: (inquiryAnswers) => set({ inquiryAnswers }),
       setInquiryIndex: (inquiryIndex) => set({ inquiryIndex }),
       setInquiryLoading: (inquiryLoading) => set({ inquiryLoading }),
-      setInquiryLanguage: (inquiryLanguage) => set({ inquiryLanguage }),
       resetInquiry: () => set({
         showInquiry: false,
         inquiryQuestions: [],
         inquiryAnswers: {},
         inquiryIndex: 0,
         inquiryLoading: false,
-        inquiryLanguage: null,
       }),
       setResult: ({ optimized, explanation, suggestions }) =>
         set({
