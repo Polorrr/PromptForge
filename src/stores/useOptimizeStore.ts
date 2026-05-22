@@ -129,6 +129,7 @@ export const useOptimizeStore = create<OptimizeState>()(
         selectedProvider: state.selectedProvider,
         selectedModel: state.selectedModel,
         selectedStyle: state.selectedStyle,
+        contextMode: state.contextMode,
       }),
     }
   )
