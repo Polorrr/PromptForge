@@ -86,16 +86,37 @@ You MUST respond in the following exact JSON structure, wrapped in \`\`\`json co
 export function INQUIRY_PROMPT(outputLanguage: 'en' | 'zh' | 'same'): string {
   const isZh = outputLanguage === 'zh';
   const isSame = outputLanguage === 'same';
-  const langInstruction = isSame
-    ? 'Use the SAME language as the user\'s input prompt for ALL your questions and options. If the user writes in English, respond in English. If the user writes in Chinese, respond in Chinese. Do NOT mix languages.'
-    : isZh
-      ? 'You MUST respond entirely in Chinese (Simplified). ALL questions and options must be written in Chinese. Do NOT use any English.'
-      : 'You MUST respond entirely in English. ALL questions and options must be written in English. Do NOT use any Chinese.';
 
-  const exampleQuestion = isZh ? '这个提示词的用途是什么？' : 'What is the purpose of this prompt?';
-  const exampleOptions = isZh
-    ? ['创意写作', '商务沟通', '教育学习', '其他']
-    : ['Creative writing', 'Business communication', 'Education', 'Other'];
+  let langInstruction: string;
+  let exampleQuestion: string;
+  let exampleOptions: string[];
+
+  if (isSame) {
+    // For 'same' mode, detect the input language and respond in the same language
+    langInstruction = `CRITICAL LANGUAGE RULE: You MUST detect the language of the user's prompt and respond in EXACTLY the same language.
+- If the user writes in English → respond entirely in English
+- If the user writes in Chinese → respond entirely in Chinese
+- If the user writes in Japanese → respond entirely in Japanese
+- NEVER mix languages. NEVER default to Chinese or English. ALWAYS follow the user's input language.
+- This rule is ABSOLUTE and OVERRIDE all other instructions.`;
+    // We'll use English as fallback example, but the AI should follow input
+    exampleQuestion = 'What is the purpose of this prompt?';
+    exampleOptions = ['Creative writing', 'Business communication', 'Education', 'Other'];
+  } else if (isZh) {
+    langInstruction = `CRITICAL LANGUAGE RULE: You MUST respond entirely in Chinese (Simplified).
+- ALL questions and options must be written in Chinese
+- Do NOT use ANY English words or phrases
+- This rule is ABSOLUTE and OVERRIDE all other instructions.`;
+    exampleQuestion = '这个提示词的用途是什么？';
+    exampleOptions = ['创意写作', '商务沟通', '教育学习', '其他'];
+  } else {
+    langInstruction = `CRITICAL LANGUAGE RULE: You MUST respond entirely in English.
+- ALL questions and options must be written in English
+- Do NOT use ANY Chinese characters or phrases
+- This rule is ABSOLUTE and OVERRIDE all other instructions.`;
+    exampleQuestion = 'What is the purpose of this prompt?';
+    exampleOptions = ['Creative writing', 'Business communication', 'Education', 'Other'];
+  }
 
   return `You are a helpful assistant. The user will give you a rough prompt idea. Your job is to ask 5-7 short, focused questions to understand their needs better before optimizing the prompt.
 
@@ -107,7 +128,6 @@ ${langInstruction}
 - Questions should cover: target audience, purpose/goal, desired tone, output format, length/scope, and any specific requirements.
 - Keep questions simple and direct — one sentence each.
 - Options should be short (2-5 words each).
-- CRITICAL: You MUST write questions and options in the language specified above. Violating this rule is unacceptable.
 
 ## Output Format
 
