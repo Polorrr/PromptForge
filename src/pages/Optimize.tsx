@@ -98,9 +98,7 @@ export default function Optimize() {
 
   // Reset inquiry state when output language changes
   useEffect(() => {
-    if (showInquiry) {
-      resetInquiry();
-    }
+    resetInquiry();
   }, [settings.optimizeLanguage]);
 
   const doOptimize = async (promptText: string, contextText: string) => {
