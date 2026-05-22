@@ -71,6 +71,8 @@ export default function Optimize() {
   const setInquiryIndex = useOptimizeStore((s) => s.setInquiryIndex);
   const inquiryLoading = useOptimizeStore((s) => s.inquiryLoading);
   const setInquiryLoading = useOptimizeStore((s) => s.setInquiryLoading);
+  const inquiryLanguage = useOptimizeStore((s) => s.inquiryLanguage);
+  const setInquiryLanguage = useOptimizeStore((s) => s.setInquiryLanguage);
   const resetInquiry = useOptimizeStore((s) => s.resetInquiry);
 
   const cleanedPrompt = useMemo(() => {
@@ -95,11 +97,6 @@ export default function Optimize() {
       window.history.replaceState({}, '');
     }
   }, [location.state, setInputPrompt, setOptimizedPrompt]);
-
-  // Reset inquiry state when output language changes
-  useEffect(() => {
-    resetInquiry();
-  }, [settings.optimizeLanguage]);
 
   const doOptimize = async (promptText: string, contextText: string) => {
     const request = {
@@ -142,7 +139,9 @@ export default function Optimize() {
     if (!inputPrompt.trim()) return;
 
     // Inquiry mode: fetch questions first via direct API call (no META_PROMPT wrapping)
-    if (contextMode === 'inquiry' && !showInquiry) {
+    // Also re-fetch if language changed since last fetch
+    const languageChanged = inquiryLanguage !== null && inquiryLanguage !== settings.optimizeLanguage;
+    if (contextMode === 'inquiry' && (!showInquiry || languageChanged)) {
       setInquiryLoading(true);
       try {
         const { INQUIRY_PROMPT } = await import('@/services/llm/meta-prompt');
@@ -206,6 +205,7 @@ export default function Optimize() {
           setInquiryAnswers({});
           setInquiryIndex(0);
           setShowInquiry(true);
+          setInquiryLanguage(settings.optimizeLanguage);
         } else {
           // Fallback: optimize directly without inquiry
           await doOptimize(inputPrompt, context);
