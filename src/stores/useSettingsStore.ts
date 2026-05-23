@@ -18,12 +18,14 @@ interface SettingsState {
   modelPreference: ModelPreference;
   optimizeLanguage: 'en' | 'zh' | 'same';
   apiLibrary: ApiConfig[];
+  showScorePopup: boolean;
   setApiKey: (provider: keyof ApiKeys, key: string) => void;
   removeApiKey: (provider: keyof ApiKeys) => void;
   setCustomBaseUrl: (url: string) => void;
   setDefaultProvider: (provider: LLMProvider) => void;
   setModelPreference: (pref: Partial<ModelPreference>) => void;
   setOptimizeLanguage: (lang: 'en' | 'zh' | 'same') => void;
+  setShowScorePopup: (show: boolean) => void;
   hasApiKey: (provider: LLMProvider) => boolean;
   saveApiConfig: (config: Omit<ApiConfig, 'id' | 'createdAt'>) => void;
   deleteApiConfig: (id: string) => void;
@@ -44,6 +46,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
       optimizeLanguage: 'same',
       apiLibrary: [],
+      showScorePopup: true,
 
       setApiKey: (provider, key) =>
         set((s) => ({ apiKeys: { ...s.apiKeys, [provider]: key } })),
@@ -57,6 +60,7 @@ export const useSettingsStore = create<SettingsState>()(
       setModelPreference: (pref) =>
         set((s) => ({ modelPreference: { ...s.modelPreference, ...pref } })),
       setOptimizeLanguage: (optimizeLanguage) => set({ optimizeLanguage }),
+      setShowScorePopup: (showScorePopup) => set({ showScorePopup }),
       setCustomBaseUrl: (customBaseUrl) => set({ customBaseUrl }),
       hasApiKey: (provider) => !!get().apiKeys[provider],
 

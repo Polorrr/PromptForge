@@ -60,6 +60,12 @@
     "reOptimize": "Re-optimize",
     "quickScore": "Quick Score",
     "scoreSubmitted": "✓ Thanks!",
+    "scorePopup": {
+      "title": "Rate this result",
+      "aiScore": "AI Score",
+      "submit": "Submit Score",
+      "closeHint": "Close without saving"
+    },
     "comparison": "Side-by-side comparison",
     "selectProvider": "Select AI provider",
     "outputLanguage": "Output language",
@@ -231,7 +237,8 @@
     "configLoaded": "Config loaded",
     "noSavedConfigs": "No saved configs yet",
     "about": "About",
-    "version": "Version"
+    "version": "Version",
+    "showScorePopup": "Score popup after optimization"
   },
   "shortcuts": {
     "title": "Keyboard Shortcuts",

@@ -472,6 +472,28 @@ export default function Settings() {
               <option value="system">{t('settings.system')}</option>
             </select>
           </div>
+
+          {/* Score Popup Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm">{t('settings.showScorePopup')}</span>
+            <button
+              type="button"
+              onClick={() => settings.setShowScorePopup(!settings.showScorePopup)}
+              className={cn(
+                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2',
+                settings.showScorePopup ? 'bg-brand-500' : 'bg-gray-300 dark:bg-gray-600'
+              )}
+              role="switch"
+              aria-checked={settings.showScorePopup}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
+                  settings.showScorePopup ? 'translate-x-5' : 'translate-x-0'
+                )}
+              />
+            </button>
+          </div>
         </div>
       </section>
 

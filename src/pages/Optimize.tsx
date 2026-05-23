@@ -104,9 +104,11 @@ export default function Optimize() {
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveCategory, setSaveCategory] = useState('other');
-  const [quickScore, setQuickScore] = useState({ clarity: 3, completeness: 3, effectiveness: 3 });
-  const [quickScoreSubmitted, setQuickScoreSubmitted] = useState(false);
-  const [quickScoreSubmitting, setQuickScoreSubmitting] = useState(false);
+  const [showScorePopup, setShowScorePopup] = useState(false);
+  const [scorePopupValues, setScorePopupValues] = useState({ clarity: 3, completeness: 3, effectiveness: 3 });
+  const [scorePopupSubmitting, setScorePopupSubmitting] = useState(false);
+  const [scorePopupAiLoading, setScorePopupAiLoading] = useState(false);
+  const [scorePopupSubmitted, setScorePopupSubmitted] = useState(false);
 
   const cleanedPrompt = useMemo(() => {
     if (!optimizedPrompt) return '';
@@ -224,8 +226,6 @@ export default function Optimize() {
 
   const handleOptimize = async () => {
     if (!inputPrompt.trim()) return;
-    setQuickScoreSubmitted(false);
-    setQuickScore({ clarity: 3, completeness: 3, effectiveness: 3 });
 
     // Inquiry mode: analyze gaps first, then ask only missing questions
     const currentShowInquiry = useOptimizeStore.getState().showInquiry;
@@ -380,6 +380,11 @@ export default function Optimize() {
       try {
         await doOptimize(inputPrompt, fullContext);
         resetInquiry();
+        if (settings.showScorePopup) {
+          setScorePopupSubmitted(false);
+          setScorePopupValues({ clarity: 3, completeness: 3, effectiveness: 3 });
+          setShowScorePopup(true);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Optimization failed';
         useOptimizeStore.getState().setError(message);
@@ -394,6 +399,11 @@ export default function Optimize() {
     setIsLocalOptimizing(true);
     try {
       await doOptimize(inputPrompt, context);
+      if (settings.showScorePopup) {
+        setScorePopupSubmitted(false);
+        setScorePopupValues({ clarity: 3, completeness: 3, effectiveness: 3 });
+        setShowScorePopup(true);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Optimization failed';
       useOptimizeStore.getState().setError(message);
@@ -448,15 +458,13 @@ export default function Optimize() {
     setShowSaveModal(false);
   };
 
-  const handleQuickScore = async () => {
+  const handleScorePopupSubmit = async () => {
     if (!optimizedPrompt || !inputPrompt.trim()) return;
-    setQuickScoreSubmitting(true);
+    setScorePopupSubmitting(true);
     try {
       const { userScore } = await import('@/services/scoring');
-      const result = userScore(quickScore.clarity, quickScore.completeness, quickScore.effectiveness);
-      // Save if we have a saved prompt (fromDetailId) or just show thanks
+      const result = userScore(scorePopupValues.clarity, scorePopupValues.completeness, scorePopupValues.effectiveness);
       if (fromDetailId) {
-        const { scoreRepository } = await import('@/services/storage/score-repository');
         await scoreRepository.add({
           promptId: fromDetailId,
           original: inputPrompt,
@@ -468,12 +476,45 @@ export default function Optimize() {
           scoredAt: new Date().toISOString(),
         });
       }
-      setQuickScoreSubmitted(true);
+      setScorePopupSubmitted(true);
       toast('success', t('optimize.scoreSubmitted'));
     } catch {
-      // silent fail for quick score
+      // silent
     } finally {
-      setQuickScoreSubmitting(false);
+      setScorePopupSubmitting(false);
+    }
+  };
+
+  const handleScorePopupAiScore = async () => {
+    if (!optimizedPrompt || !inputPrompt.trim()) return;
+    setScorePopupAiLoading(true);
+    try {
+      const detectApiKey = selectedProvider === 'custom'
+        ? (settings.apiKeys.custom || '')
+        : selectedProvider === 'claude'
+          ? (settings.apiKeys.claude || '')
+          : (settings.apiKeys.openai || '');
+      const detectBaseUrl = selectedProvider === 'custom' ? settings.customBaseUrl : undefined;
+      const result = await aiScore(inputPrompt, optimizedPrompt, selectedProvider, detectApiKey, selectedModel, detectBaseUrl);
+      setScorePopupValues(result.scores);
+      if (fromDetailId) {
+        await scoreRepository.add({
+          promptId: fromDetailId,
+          original: inputPrompt,
+          optimized: optimizedPrompt,
+          style: selectedStyle,
+          scores: result.scores,
+          overall: result.overall,
+          source: 'ai',
+          scoredAt: new Date().toISOString(),
+        });
+      }
+      setScorePopupSubmitted(true);
+      toast('success', t('optimize.scoreSubmitted'));
+    } catch {
+      toast('error', t('detail.scoring'));
+    } finally {
+      setScorePopupAiLoading(false);
     }
   };
 
@@ -909,59 +950,6 @@ export default function Optimize() {
                 </div>
               )}
 
-              {/* Quick Score */}
-              {!quickScoreSubmitted ? (
-                <div className="rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {t('optimize.quickScore')}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {(['clarity', 'completeness', 'effectiveness'] as const).map((key) => (
-                      <div key={key} className="flex items-center gap-3">
-                        <span className="text-xs text-gray-500 w-16">{t(`detail.${key}`)}</span>
-                        <input
-                          type="range"
-                          min={1}
-                          max={5}
-                          step={1}
-                          value={quickScore[key]}
-                          onChange={(e) => setQuickScore({ ...quickScore, [key]: Number(e.target.value) })}
-                          onKeyDown={(e) => {
-                            if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-                              e.preventDefault();
-                              setQuickScore({ ...quickScore, [key]: Math.max(1, quickScore[key] - 1) });
-                            } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-                              e.preventDefault();
-                              setQuickScore({ ...quickScore, [key]: Math.min(5, quickScore[key] + 1) });
-                            }
-                          }}
-                          tabIndex={0}
-                          className="flex-1 accent-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
-                        />
-                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400 w-6 text-right">
-                          {quickScore[key]}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={handleQuickScore}
-                    loading={quickScoreSubmitting}
-                    className="mt-3 w-full"
-                  >
-                    {t('common.save')}
-                  </Button>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4 text-center">
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    {t('optimize.scoreSubmitted')}
-                  </p>
-                </div>
-              )}
             </div>
           ) : isLocalOptimizing || inquiryLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
@@ -1081,6 +1069,98 @@ export default function Optimize() {
                 {t('optimize.saveModal.confirm', '保存')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Score Popup Modal */}
+      {showScorePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowScorePopup(false)} />
+          <div className="relative w-full max-w-sm bg-surface-0 dark:bg-dark-1 rounded-xl shadow-modal border border-surface-3 dark:border-dark-3 p-6 animate-slide-down">
+            <button
+              onClick={() => setShowScorePopup(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">
+              {t('optimize.scorePopup.title')}
+            </h3>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+              {t('optimize.scorePopup.closeHint')}
+            </p>
+
+            {!scorePopupSubmitted ? (
+              <>
+                <div className="space-y-3 mb-4">
+                  {(['clarity', 'completeness', 'effectiveness'] as const).map((key) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 w-16">{t(`detail.${key}`)}</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={5}
+                        step={1}
+                        value={scorePopupValues[key]}
+                        onChange={(e) => setScorePopupValues({ ...scorePopupValues, [key]: Number(e.target.value) })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            setScorePopupValues({ ...scorePopupValues, [key]: Math.max(1, scorePopupValues[key] - 1) });
+                          } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            setScorePopupValues({ ...scorePopupValues, [key]: Math.min(5, scorePopupValues[key] + 1) });
+                          }
+                        }}
+                        tabIndex={0}
+                        className="flex-1 accent-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400 w-6 text-right">
+                        {scorePopupValues[key]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleScorePopupAiScore}
+                    disabled={scorePopupAiLoading || scorePopupSubmitting}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-surface-2 dark:bg-dark-3 text-gray-600 dark:text-gray-400 hover:bg-surface-3 dark:hover:bg-dark-2 transition-colors disabled:opacity-50"
+                  >
+                    {scorePopupAiLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        {t('detail.scoring')}
+                      </span>
+                    ) : (
+                      t('optimize.scorePopup.aiScore')
+                    )}
+                  </button>
+                  <button
+                    onClick={handleScorePopupSubmit}
+                    disabled={scorePopupSubmitting || scorePopupAiLoading}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-brand-500 text-white hover:bg-brand-600 transition-colors disabled:opacity-50"
+                  >
+                    {scorePopupSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        {t('detail.scoring')}
+                      </span>
+                    ) : (
+                      t('optimize.scorePopup.submit')
+                    )}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4 text-center">
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  {t('optimize.scoreSubmitted')}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

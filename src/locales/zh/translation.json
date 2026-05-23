@@ -60,6 +60,12 @@
     "reOptimize": "重新优化",
     "quickScore": "快速评分",
     "scoreSubmitted": "✓ 感谢反馈！",
+    "scorePopup": {
+      "title": "评分",
+      "aiScore": "AI 评分",
+      "submit": "提交评分",
+      "closeHint": "关闭将不保存评分"
+    },
     "comparison": "对比查看",
     "selectProvider": "选择 AI 服务商",
     "outputLanguage": "输出语言",
@@ -231,7 +237,8 @@
     "configLoaded": "配置已加载",
     "noSavedConfigs": "暂无保存的配置",
     "about": "关于",
-    "version": "版本"
+    "version": "版本",
+    "showScorePopup": "优化后评分弹窗"
   },
   "shortcuts": {
     "title": "快捷键",
