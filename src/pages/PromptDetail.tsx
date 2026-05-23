@@ -12,6 +12,9 @@ import {
   Edit3,
   Check,
   X,
+  Sparkles,
+  BarChart3,
+  Users,
 } from 'lucide-react';
 import { usePromptStore } from '@/stores/usePromptStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -23,23 +26,46 @@ import { gistService } from '@/services/github/gist';
 import { exportPromptJSON, downloadJSON } from '@/services/export/json-export';
 import { cn } from '@/utils/cn';
 import { ROUTES } from '@/constants/routes';
+import { scoreRepository } from '@/services/storage/score-repository';
+import { aiScore, userScore } from '@/services/scoring';
+import type { PromptScore } from '@/types/prompt';
 
 export default function PromptDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const toast = useToast();
-  const { currentPrompt, loadPrompt, updatePrompt, deletePrompt, toggleFavorite } =
+  const { currentPrompt, loadPrompt, updatePrompt, deletePrompt, toggleFavorite, createPrompt } =
     usePromptStore();
   const settings = useSettingsStore();
 
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [gistLoading, setGistLoading] = useState(false);
+  const [importGistId, setImportGistId] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [scores, setScores] = useState<PromptScore[]>([]);
+  const [scoreStats, setScoreStats] = useState<{
+    count: number;
+    avgClarity: number;
+    avgCompleteness: number;
+    avgEffectiveness: number;
+    avgOverall: number;
+    trend: { overall: number; scoredAt: string; source: string }[];
+  } | null>(null);
+  const [aiScoring, setAiScoring] = useState(false);
+  const [showUserScore, setShowUserScore] = useState(false);
+  const [userScores, setUserScores] = useState({ clarity: 3, completeness: 3, effectiveness: 3 });
 
   useEffect(() => {
     if (id) loadPrompt(id);
   }, [id, loadPrompt]);
+
+  useEffect(() => {
+    if (!id) return;
+    scoreRepository.getByPromptId(id).then(setScores);
+    scoreRepository.getStats(id).then(setScoreStats);
+  }, [id]);
 
   if (!currentPrompt) {
     return (
@@ -77,25 +103,116 @@ export default function PromptDetail() {
     toast('success', t('settings.exportAll') + ' ✓');
   };
 
-  const handleGist = async () => {
+  const handleGist = async (shareToCommunity = false) => {
     if (!settings.apiKeys.github) {
       toast('error', 'GitHub token required');
       return;
     }
     setGistLoading(true);
     try {
-      const result = await gistService.createGist(prompt, settings.apiKeys.github);
+      const result = await gistService.createGist(prompt, settings.apiKeys.github, shareToCommunity);
       await updatePrompt(prompt.id, {
         gistId: result.gistId,
         gistUrl: result.gistUrl,
       });
-      toast('success', t('detail.gistCreated'));
+      toast('success', shareToCommunity ? t('detail.sharedToCommunity') : t('detail.gistCreated'));
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed');
     } finally {
       setGistLoading(false);
     }
   };
+
+  const handleImportGist = async () => {
+    if (!importGistId.trim()) return;
+    setImportLoading(true);
+    try {
+      const imported = await gistService.importFromGist(importGistId.trim());
+      const { id: _id, createdAt: _c, updatedAt: _u, version: _v, history: _h, ...rest } = imported;
+      await createPrompt(rest);
+      toast('success', t('detail.gistImported'));
+      setImportGistId('');
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleAiScore = async () => {
+    if (!prompt) return;
+    setAiScoring(true);
+    try {
+      const result = await aiScore(
+        prompt.originalText,
+        prompt.optimizedText,
+        prompt.provider,
+        settings.apiKeys[prompt.provider] || '',
+        prompt.model,
+        prompt.provider === 'custom' ? settings.customBaseUrl : undefined
+      );
+      const scoreData: Omit<PromptScore, 'id'> = {
+        promptId: prompt.id,
+        original: prompt.originalText,
+        optimized: prompt.optimizedText,
+        style: 'default',
+        scores: result.scores,
+        overall: result.overall,
+        source: 'ai',
+        scoredAt: new Date().toISOString(),
+      };
+      await scoreRepository.add(scoreData);
+      const updated = await scoreRepository.getByPromptId(prompt.id);
+      setScores(updated);
+      const stats = await scoreRepository.getStats(prompt.id);
+      setScoreStats(stats);
+      toast('success', t('detail.scoreSaved'));
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Scoring failed');
+    } finally {
+      setAiScoring(false);
+    }
+  };
+
+  const handleUserScore = async () => {
+    if (!prompt) return;
+    const result = userScore(userScores.clarity, userScores.completeness, userScores.effectiveness);
+    const scoreData: Omit<PromptScore, 'id'> = {
+      promptId: prompt.id,
+      original: prompt.originalText,
+      optimized: prompt.optimizedText,
+      style: 'default',
+      scores: result.scores,
+      overall: result.overall,
+      source: 'user',
+      scoredAt: new Date().toISOString(),
+    };
+    await scoreRepository.add(scoreData);
+    const updated = await scoreRepository.getByPromptId(prompt.id);
+    setScores(updated);
+    const stats = await scoreRepository.getStats(prompt.id);
+    setScoreStats(stats);
+    setShowUserScore(false);
+    toast('success', t('detail.scoreSaved'));
+  };
+
+  const ScoreBar = ({ label, value }: { label: string; value: number }) => (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-gray-500 w-16">{label}</span>
+      <div className="flex-1 h-2 rounded-full bg-surface-2 dark:bg-dark-2 overflow-hidden">
+        <div
+          className={cn(
+            'h-full rounded-full transition-all',
+            value >= 4 ? 'bg-green-500' : value >= 3 ? 'bg-yellow-500' : 'bg-red-400'
+          )}
+          style={{ width: `${(value / 5) * 100}%` }}
+        />
+      </div>
+      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 w-6 text-right">
+        {value.toFixed(1)}
+      </span>
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-6">
@@ -246,31 +363,175 @@ export default function PromptDetail() {
       </div>
 
       {/* Actions */}
-      <div className="mt-6 flex items-center gap-3">
+      <div className="mt-6 flex items-center gap-3 flex-wrap">
         <Button variant="secondary" onClick={handleExport}>
           <Download size={16} />
           {t('detail.exportJson')}
         </Button>
         <Button
           variant="secondary"
-          onClick={handleGist}
+          onClick={() => handleGist(false)}
           loading={gistLoading}
           disabled={!settings.apiKeys.github}
         >
           <ExternalLink size={16} />
           {t('detail.createGist')}
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => handleGist(true)}
+          loading={gistLoading}
+          disabled={!settings.apiKeys.github}
+        >
+          <Users size={16} />
+          {t('detail.shareToCommunity')}
+        </Button>
         <Link to={ROUTES.OPTIMIZE} state={{
           prefill: prompt.originalText,
           prefillResult: prompt.optimizedText,
           prefillExplanation: prompt.explanation,
           prefillSuggestions: prompt.suggestions || [],
+          fromDetail: prompt.id,
         }}>
           <Button variant="secondary">
             <Edit3 size={16} />
             {t('optimize.reOptimize')}
           </Button>
         </Link>
+      </div>
+
+      {/* Import from Gist */}
+      <div className="mt-6 rounded-xl border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 p-5">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('detail.importGist')}</h3>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={importGistId}
+            onChange={(e) => setImportGistId(e.target.value)}
+            placeholder="Gist ID..."
+            className="flex-1 h-9 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleImportGist(); }}
+          />
+          <Button
+            size="sm"
+            onClick={handleImportGist}
+            loading={importLoading}
+            disabled={!importGistId.trim()}
+          >
+            {t('common.import')}
+          </Button>
+        </div>
+      </div>
+
+      {/* Version History */}
+      {prompt.history.length > 0 && (
+        <div className="mt-6 rounded-xl border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 p-5">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('detail.versionHistory')}</h3>
+          <div className="space-y-3">
+            {[...prompt.history].reverse().map((v) => (
+              <div key={v.version} className="rounded-lg bg-surface-1 dark:bg-dark-1 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-gray-500">v{v.version}</span>
+                  <span className="text-xs text-gray-400">{formatDate(v.createdAt)}</span>
+                </div>
+                <pre className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400 font-sans line-clamp-3">
+                  {v.text}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quality Score */}
+      <div className="mt-6 rounded-xl border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+            <BarChart3 size={16} />
+            {t('detail.qualityScore')}
+          </h3>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleAiScore}
+              loading={aiScoring}
+            >
+              <Sparkles size={14} />
+              {t('detail.aiScore')}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setShowUserScore(!showUserScore)}
+            >
+              {t('detail.userScore')}
+            </Button>
+          </div>
+        </div>
+
+        {/* User Score Sliders */}
+        {showUserScore && (
+          <div className="mb-4 p-4 rounded-lg bg-surface-1 dark:bg-dark-1 space-y-3">
+            {(['clarity', 'completeness', 'effectiveness'] as const).map((key) => (
+              <div key={key} className="flex items-center gap-3">
+                <span className="text-xs text-gray-500 w-16">{t(`detail.${key}`)}</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={userScores[key]}
+                  onChange={(e) => setUserScores({ ...userScores, [key]: Number(e.target.value) })}
+                  className="flex-1 accent-brand-500"
+                />
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-400 w-6 text-right">
+                  {userScores[key]}
+                </span>
+              </div>
+            ))}
+            <Button size="sm" onClick={handleUserScore} className="mt-2">
+              {t('common.save')}
+            </Button>
+          </div>
+        )}
+
+        {/* Latest Score */}
+        {scores.length > 0 ? (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <ScoreBar label={t('detail.clarity')} value={scoreStats?.avgClarity || 0} />
+              <ScoreBar label={t('detail.completeness')} value={scoreStats?.avgCompleteness || 0} />
+              <ScoreBar label={t('detail.effectiveness')} value={scoreStats?.avgEffectiveness || 0} />
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-surface-2 dark:border-dark-2">
+              <span className="text-xs text-gray-500">{t('detail.avgScore')} ({scoreStats?.count || 0})</span>
+              <span className="text-lg font-bold text-brand-600">{scoreStats?.avgOverall.toFixed(1) || '-'}</span>
+            </div>
+
+            {/* Trend Mini Chart */}
+            {scoreStats && scoreStats.trend.length > 1 && (
+              <div className="pt-3 border-t border-surface-2 dark:border-dark-2">
+                <p className="text-xs text-gray-500 mb-2">{t('detail.scoreHistory')}</p>
+                <div className="flex items-end gap-1 h-12">
+                  {scoreStats.trend.map((t, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'flex-1 rounded-t',
+                        t.source === 'ai' ? 'bg-brand-400' : 'bg-green-400'
+                      )}
+                      style={{ height: `${(t.overall / 5) * 100}%`, minHeight: '4px' }}
+                      title={`${t.source === 'ai' ? 'AI' : 'User'}: ${t.overall}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 text-center py-4">{t('detail.noScores')}</p>
+        )}
       </div>
     </div>
   );

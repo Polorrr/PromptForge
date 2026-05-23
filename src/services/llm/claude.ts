@@ -1,5 +1,6 @@
 import type { OptimizeRequest, OptimizeResponse, StreamChunk } from '@/types/llm';
 import { META_PROMPT } from './meta-prompt';
+import { extractJSON } from '@/utils/extract-json';
 
 export class ClaudeService {
   async optimize(
@@ -7,7 +8,7 @@ export class ClaudeService {
     apiKey: string,
     onChunk?: (chunk: StreamChunk) => void
   ): Promise<OptimizeResponse> {
-    const systemPrompt = META_PROMPT(request.language, request.style);
+    const systemPrompt = META_PROMPT(request.language, request.style, request.dynamicExamples);
     const userMessage = request.context
       ? `[CONTEXT]\n${request.context}\n[/CONTEXT]\n\n[ORIGINAL PROMPT]\n${request.prompt}\n[/ORIGINAL PROMPT]`
       : request.prompt;
@@ -87,40 +88,15 @@ export class ClaudeService {
       throw new Error('Failed to parse AI response. Please try again.');
     }
     if (parsed.error) {
-      throw new Error(parsed.error as string);
+      throw new Error(String(parsed.error));
     }
     return {
-      optimizedPrompt: (parsed.optimizedPrompt as string) || '',
-      explanation: (parsed.explanation as string) || '',
-      suggestions: (parsed.suggestions as string[]) || [],
+      optimizedPrompt: String(parsed.optimizedPrompt || ''),
+      explanation: String(parsed.explanation || ''),
+      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.map(String) : [],
       provider: request.provider,
       model: request.model,
       tokensUsed: { input: 0, output: 0 },
     };
   }
-}
-
-function extractJSON(text: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(text);
-  } catch {
-    // ignore
-  }
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch?.[1]) {
-    try {
-      return JSON.parse(fenceMatch[1].trim());
-    } catch {
-      // ignore
-    }
-  }
-  const braceMatch = text.match(/\{[\s\S]*\}/);
-  if (braceMatch) {
-    try {
-      return JSON.parse(braceMatch[0]);
-    } catch {
-      // ignore
-    }
-  }
-  return null;
 }

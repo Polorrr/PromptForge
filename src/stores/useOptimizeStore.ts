@@ -26,6 +26,8 @@ interface OptimizeState {
   inquiryAnswers: Record<number, string>;
   inquiryIndex: number;
   inquiryLoading: boolean;
+  analysisMissing: string[];
+  inquiryCount: number;
   sessionHistory: Array<{
     input: string;
     output: string;
@@ -49,6 +51,7 @@ interface OptimizeState {
   setInquiryAnswers: (answers: Record<number, string>) => void;
   setInquiryIndex: (index: number) => void;
   setInquiryLoading: (loading: boolean) => void;
+  setAnalysisMissing: (missing: string[]) => void;
   resetInquiry: () => void;
   addToHistory: (entry: { input: string; output: string; explanation: string; suggestions: string[]; provider: LLMProvider; timestamp: string }) => void;
   clearResult: () => void;
@@ -75,6 +78,8 @@ export const useOptimizeStore = create<OptimizeState>()(
       inquiryAnswers: {},
       inquiryIndex: 0,
       inquiryLoading: false,
+      analysisMissing: [],
+      inquiryCount: 0,
       sessionHistory: [],
 
       setInputPrompt: (inputPrompt) => set({ inputPrompt }),
@@ -90,12 +95,14 @@ export const useOptimizeStore = create<OptimizeState>()(
       setInquiryAnswers: (inquiryAnswers) => set({ inquiryAnswers }),
       setInquiryIndex: (inquiryIndex) => set({ inquiryIndex }),
       setInquiryLoading: (inquiryLoading) => set({ inquiryLoading }),
+      setAnalysisMissing: (analysisMissing) => set({ analysisMissing }),
       resetInquiry: () => set({
         showInquiry: false,
         inquiryQuestions: [],
         inquiryAnswers: {},
         inquiryIndex: 0,
         inquiryLoading: false,
+        analysisMissing: [],
       }),
       setResult: ({ optimized, explanation, suggestions }) =>
         set({
@@ -110,7 +117,7 @@ export const useOptimizeStore = create<OptimizeState>()(
       addToHistory: (entry) =>
         set((s) => ({ sessionHistory: [entry, ...s.sessionHistory] })),
       clearResult: () =>
-        set({ optimizedPrompt: '', explanation: '', suggestions: [], error: null }),
+        set({ optimizedPrompt: '', explanation: '', suggestions: [], error: null, isOptimizing: false, isStreaming: false }),
       reset: () =>
         set({
           inputPrompt: '',

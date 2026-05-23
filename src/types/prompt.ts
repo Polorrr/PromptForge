@@ -48,6 +48,22 @@ export interface Tag {
   usageCount: number;
 }
 
+export interface PromptScore {
+  id?: number;
+  promptId: string;
+  original: string;
+  optimized: string;
+  style: string;
+  scores: {
+    clarity: number;
+    completeness: number;
+    effectiveness: number;
+  };
+  overall: number;
+  source: 'ai' | 'user';
+  scoredAt: string;
+}
+
 export interface CommunityPrompt {
   id: string;
   title: string;

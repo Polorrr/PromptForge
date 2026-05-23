@@ -9,6 +9,7 @@ export interface OptimizeRequest {
   style: OptimizeStyle;
   provider: LLMProvider;
   model: string;
+  dynamicExamples?: string;
 }
 
 export interface OptimizeResponse {

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
   Star,
@@ -9,11 +9,13 @@ import {
   Trash2,
   Copy,
   ExternalLink,
+  Columns2,
 } from 'lucide-react';
 import { usePromptStore } from '@/stores/usePromptStore';
 import { Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { ROUTES } from '@/constants/routes';
+import { DEFAULT_CATEGORIES } from '@/constants/categories';
 import { copyToClipboard } from '@/utils/copy';
 import { formatDate } from '@/utils/date';
 import { cn } from '@/utils/cn';
@@ -22,6 +24,7 @@ import type { Prompt } from '@/types/prompt';
 export default function Library() {
   const { t } = useTranslation();
   const toast = useToast();
+  const navigate = useNavigate();
   const {
     prompts,
     isLoading,
@@ -34,6 +37,12 @@ export default function Library() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    prompts.forEach((p) => p.tags.forEach((t) => tags.add(t)));
+    return [...tags].sort();
+  }, [prompts]);
 
   useEffect(() => {
     loadPrompts();
@@ -66,6 +75,15 @@ export default function Library() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-heading">{t('library.title')}</h1>
         <div className="flex items-center gap-2">
+          {prompts.length >= 2 && (
+            <Link
+              to={`${ROUTES.COMPARE}?a=${prompts[0]?.id}&b=${prompts[1]?.id}`}
+              className="p-2 rounded-lg text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2 hover:text-gray-600 transition-colors"
+              title={t('compare.title')}
+            >
+              <Columns2 size={18} />
+            </Link>
+          )}
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
@@ -107,7 +125,7 @@ export default function Library() {
       </div>
 
       {/* Filter chips */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto">
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto">
         <button
           onClick={() => {
             setFilter({});
@@ -115,7 +133,7 @@ export default function Library() {
           }}
           className={cn(
             'px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0',
-            !filter.favoritesOnly && !filter.category
+            !filter.favoritesOnly && !filter.category && !filter.tags?.length
               ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
               : 'bg-surface-2 dark:bg-dark-2 text-gray-600 dark:text-gray-400 hover:bg-surface-3 dark:hover:bg-dark-3'
           )}
@@ -138,6 +156,53 @@ export default function Library() {
           {t('library.favorites')}
         </button>
       </div>
+
+      {/* Category filter */}
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto">
+        {DEFAULT_CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => {
+              setFilter({ ...filter, category: filter.category === cat.id ? undefined : cat.id });
+              loadPrompts();
+            }}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 flex items-center gap-1',
+              filter.category === cat.id
+                ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
+                : 'bg-surface-2 dark:bg-dark-2 text-gray-600 dark:text-gray-400 hover:bg-surface-3 dark:hover:bg-dark-3'
+            )}
+          >
+            <span>{cat.icon}</span>
+            {cat.nameZh}
+          </button>
+        ))}
+      </div>
+
+      {/* Tag filter */}
+      {allTags.length > 0 && (
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto">
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => {
+                const current = filter.tags || [];
+                const next = current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag];
+                setFilter({ ...filter, tags: next.length ? next : undefined });
+                loadPrompts();
+              }}
+              className={cn(
+                'px-2.5 py-1 rounded-full text-xs font-medium transition-colors shrink-0',
+                filter.tags?.includes(tag)
+                  ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
+                  : 'bg-surface-2 dark:bg-dark-2 text-gray-500 dark:text-gray-400 hover:bg-surface-3 dark:hover:bg-dark-3'
+              )}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       {isLoading ? (

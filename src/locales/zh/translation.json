@@ -128,14 +128,37 @@
     "gistCreated": "Gist 已创建！",
     "editTitle": "编辑标题",
     "addTag": "添加标签",
-    "selectCategory": "选择分类"
+    "selectCategory": "选择分类",
+    "importGist": "从 Gist 导入",
+    "gistImported": "提示词已从 Gist 导入！",
+    "shareToCommunity": "分享到社区",
+    "sharedToCommunity": "已分享到社区！",
+    "qualityScore": "质量评分",
+    "clarity": "清晰度",
+    "completeness": "完整性",
+    "effectiveness": "有效性",
+    "overall": "综合分",
+    "aiScore": "AI 评分",
+    "userScore": "手动评分",
+    "scoreHistory": "评分趋势",
+    "noScores": "暂无评分",
+    "scoreSaved": "评分已保存",
+    "avgScore": "平均分",
+    "scoring": "评分中...",
+    "recommendedStyle": "推荐风格",
+    "basedOnScores": "基于你的评分数据",
+    "noScoreData": "暂无评分数据，评分后可获得个性化推荐"
   },
   "compare": {
     "title": "对比",
     "original": "原始版本",
     "optimized": "优化版本",
     "noDiff": "没有发现差异",
-    "comingSoon": "并排对比功能即将上线"
+    "comingSoon": "并排对比功能即将上线",
+    "selectPrompt": "选择一个提示词...",
+    "selectTwoPrompts": "在上方选择两个提示词进行对比",
+    "samePrompt": "你选择了同一个提示词",
+    "diff": "差异"
   },
   "notFound": {
     "title": "404",
@@ -147,10 +170,13 @@
     "subtitle": "发现和分享优质提示词",
     "comingSoon": "社区功能即将上线 — 与他人分享和发现优质提示词",
     "forkToLibrary": "复制到库",
+    "forkSuccess": "已复制到你的库",
     "submitPrompt": "提交提示词",
-    "noPrompts": "暂无社区提示词",
+    "noPrompts": "没有找到匹配的提示词",
     "searchPlaceholder": "搜索社区提示词...",
-    "loading": "加载社区提示词中..."
+    "loading": "搜索中...",
+    "startSearch": "输入关键词搜索社区公开的提示词，或留空浏览全部",
+    "shareToCommunity": "分享到社区"
   },
   "settings": {
     "title": "设置",

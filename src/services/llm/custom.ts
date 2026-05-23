@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import type { OptimizeRequest, OptimizeResponse, StreamChunk } from '@/types/llm';
 import { META_PROMPT } from './meta-prompt';
 import { isNvidiaApiKey } from '@/constants/models';
+import { extractJSON } from '@/utils/extract-json';
 
 const PROXY_URL = 'http://localhost:3456/nvidia';
 
@@ -20,7 +21,7 @@ export class CustomService {
     baseUrl: string,
     onChunk?: (chunk: StreamChunk) => void
   ): Promise<OptimizeResponse> {
-    const systemPrompt = META_PROMPT(request.language, request.style);
+    const systemPrompt = META_PROMPT(request.language, request.style, request.dynamicExamples);
     const useNvidia = isNvidiaApiKey(apiKey);
 
     if (useNvidia) {
@@ -170,19 +171,6 @@ export class CustomService {
       tokensUsed: { input: 0, output: 0 },
     };
   }
-}
-
-function extractJSON(text: string): Record<string, unknown> | null {
-  try { return JSON.parse(text); } catch { /* ignore */ }
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch?.[1]) {
-    try { return JSON.parse(fenceMatch[1].trim()); } catch { /* ignore */ }
-  }
-  const braceMatch = text.match(/\{[\s\S]*\}/);
-  if (braceMatch) {
-    try { return JSON.parse(braceMatch[0]); } catch { /* ignore */ }
-  }
-  return null;
 }
 
 export interface RelayModel {

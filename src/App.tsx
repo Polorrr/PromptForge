@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { ROUTES } from './constants/routes';
 import AppLayout from './components/layout/AppLayout';
 import { ToastProvider } from './components/ui/Toast';
+import { useShortcuts } from './hooks/useShortcuts';
 
 const Home = lazy(() => import('./pages/Home'));
 const Optimize = lazy(() => import('./pages/Optimize'));
@@ -22,6 +23,8 @@ function Loading() {
 }
 
 export default function App() {
+  useShortcuts();
+
   return (
     <ToastProvider>
       <Suspense fallback={<Loading />}>

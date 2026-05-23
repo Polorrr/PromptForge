@@ -7,12 +7,18 @@ import { useRelayModels } from '@/hooks/useRelayModels';
 import { useOptimizeStore } from '@/stores/useOptimizeStore';
 import { usePromptStore } from '@/stores/usePromptStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useAppStore } from '@/stores/useAppStore';
 import { Button } from '@/components/ui';
 import { Textarea } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { copyToClipboard } from '@/utils/copy';
 import { MODELS, NVIDIA_MODELS, isNvidiaApiKey } from '@/constants/models';
 import { cn } from '@/utils/cn';
+import { extractJSON } from '@/utils/extract-json';
+import { validateOptimizationBasic, aiDetectSimilarity } from '@/utils/validate-output';
+import { scoreRepository } from '@/services/storage/score-repository';
+import { detectCategory, getCategoryIcon } from '@/utils/auto-categorize';
+import { DEFAULT_CATEGORIES } from '@/constants/categories';
 import { useState, useMemo } from 'react';
 import type { OptimizeStyle } from '@/types/llm';
 
@@ -52,12 +58,32 @@ export default function Optimize() {
 
   const [isLocalOptimizing, setIsLocalOptimizing] = useState(false);
   const createPrompt = usePromptStore((s) => s.createPrompt);
+  const saveVersion = usePromptStore((s) => s.saveVersion);
+  const [fromDetailId, setFromDetailId] = useState<string | null>(null);
   const settings = useSettingsStore();
+  const uiLanguage = useAppStore((s) => s.language);
   const setOptimizedPrompt = useOptimizeStore((s) => s.setResult);
   const [showHistory, setShowHistory] = useState(false);
   const { models: relayModels, loading: relayLoading, reload: reloadRelayModels } = useRelayModels();
   const [manualModel, setManualModel] = useState('');
   const [useManualModel, setUseManualModel] = useState(false);
+  const [styleStats, setStyleStats] = useState<Record<string, { count: number; avgOverall: number } | null>>({});
+
+  useEffect(() => {
+    scoreRepository.getStyleStats().then(setStyleStats);
+  }, []);
+
+  const recommendedStyle = useMemo(() => {
+    let best: OptimizeStyle | null = null;
+    let bestScore = 0;
+    for (const [style, stats] of Object.entries(styleStats)) {
+      if (stats && stats.count >= 2 && stats.avgOverall > bestScore) {
+        bestScore = stats.avgOverall;
+        best = style as OptimizeStyle;
+      }
+    }
+    return best;
+  }, [styleStats]);
 
   const contextMode = useOptimizeStore((s) => s.contextMode);
   const setContextMode = useOptimizeStore((s) => s.setContextMode);
@@ -71,7 +97,12 @@ export default function Optimize() {
   const setInquiryIndex = useOptimizeStore((s) => s.setInquiryIndex);
   const inquiryLoading = useOptimizeStore((s) => s.inquiryLoading);
   const setInquiryLoading = useOptimizeStore((s) => s.setInquiryLoading);
+  const inquiryCount = useOptimizeStore((s) => s.inquiryCount);
+  const setAnalysisMissing = useOptimizeStore((s) => s.setAnalysisMissing);
   const resetInquiry = useOptimizeStore((s) => s.resetInquiry);
+
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveCategory, setSaveCategory] = useState('other');
 
   const cleanedPrompt = useMemo(() => {
     if (!optimizedPrompt) return '';
@@ -83,8 +114,10 @@ export default function Optimize() {
     const prefillResult = location.state?.prefillResult as string | undefined;
     const prefillExplanation = location.state?.prefillExplanation as string | undefined;
     const prefillSuggestions = location.state?.prefillSuggestions as string[] | undefined;
+    const fromDetail = location.state?.fromDetail as string | undefined;
     if (prefill) {
       setInputPrompt(prefill);
+      if (fromDetail) setFromDetailId(fromDetail);
       if (prefillResult) {
         setOptimizedPrompt({
           optimized: prefillResult,
@@ -96,13 +129,27 @@ export default function Optimize() {
     }
   }, [location.state, setInputPrompt, setOptimizedPrompt]);
 
-  // Close inquiry mode when output language changes
+  // Close inquiry mode and clear errors when any language changes
   useEffect(() => {
     setContextMode('context');
     resetInquiry();
-  }, [settings.optimizeLanguage]);
+    clearResult();
+  }, [settings.optimizeLanguage, uiLanguage]);
 
   const doOptimize = async (promptText: string, contextText: string) => {
+    // Fetch top-scoring personal examples for dynamic few-shot
+    let dynamicExamples: string | undefined;
+    const topExamples = await scoreRepository.getTopExamples(3);
+    if (topExamples.length >= 2) {
+      dynamicExamples = topExamples
+        .map((ex, i) => {
+          const shortOriginal = ex.original.length > 100 ? ex.original.slice(0, 100) + '...' : ex.original;
+          const shortOptimized = ex.optimized.length > 200 ? ex.optimized.slice(0, 200) + '...' : ex.optimized;
+          return `// Example ${i + 1} — Your high-scoring result (${ex.overall}/5)\n// Input: "${shortOriginal}"\n// Optimized: "${shortOptimized}"`;
+        })
+        .join('\n\n');
+    }
+
     const request = {
       prompt: promptText,
       context: contextText,
@@ -110,20 +157,52 @@ export default function Optimize() {
       style: selectedStyle,
       provider: selectedProvider,
       model: selectedModel,
+      dynamicExamples,
     };
-    let result;
-    if (selectedProvider === 'custom') {
-      const { customService } = await import('@/services/llm/custom');
-      result = await customService.optimize(request, settings.apiKeys.custom || '', settings.customBaseUrl || 'https://api.xxdlzs.top');
-    } else if (selectedProvider === 'claude') {
-      const { ClaudeService } = await import('@/services/llm/claude');
-      const svc = new ClaudeService();
-      result = await svc.optimize(request, settings.apiKeys.claude || '');
-    } else {
-      const { OpenAIService } = await import('@/services/llm/openai');
-      const svc = new OpenAIService();
-      result = await svc.optimize(request, settings.apiKeys.openai || '');
+
+    const callAPI = async () => {
+      if (selectedProvider === 'custom') {
+        const { customService } = await import('@/services/llm/custom');
+        return customService.optimize(request, settings.apiKeys.custom || '', settings.customBaseUrl || 'https://api.xxdlzs.top');
+      } else if (selectedProvider === 'claude') {
+        const { ClaudeService } = await import('@/services/llm/claude');
+        const svc = new ClaudeService();
+        return svc.optimize(request, settings.apiKeys.claude || '');
+      } else {
+        const { OpenAIService } = await import('@/services/llm/openai');
+        const svc = new OpenAIService();
+        return svc.optimize(request, settings.apiKeys.openai || '');
+      }
+    };
+
+    let result = await callAPI();
+    const basicCheck = validateOptimizationBasic(promptText, result.optimizedPrompt, result.explanation, selectedStyle);
+
+    if (!basicCheck.valid) {
+      result = await callAPI();
+      const retryBasic = validateOptimizationBasic(promptText, result.optimizedPrompt, result.explanation, selectedStyle);
+      if (!retryBasic.valid) {
+        throw new Error(retryBasic.warnings[0] || '优化结果质量不佳，请重试');
+      }
     }
+
+    // AI semantic check — detect if optimization is just reformatting
+    const detectApiKey = selectedProvider === 'custom'
+      ? (settings.apiKeys.custom || '')
+      : selectedProvider === 'claude'
+        ? (settings.apiKeys.claude || '')
+        : (settings.apiKeys.openai || '');
+    const detectBaseUrl = selectedProvider === 'custom' ? settings.customBaseUrl : undefined;
+    const aiCheck = await aiDetectSimilarity(promptText, result.optimizedPrompt, detectApiKey, selectedModel, detectBaseUrl);
+
+    if (!aiCheck.improved) {
+      result = await callAPI();
+      const retryAi = await aiDetectSimilarity(promptText, result.optimizedPrompt, detectApiKey, selectedModel, detectBaseUrl);
+      if (!retryAi.improved) {
+        throw new Error(retryAi.reason || '优化结果与原文实质相同，请重试');
+      }
+    }
+
     useOptimizeStore.getState().setResult({
       optimized: result.optimizedPrompt,
       explanation: result.explanation,
@@ -142,16 +221,15 @@ export default function Optimize() {
   const handleOptimize = async () => {
     if (!inputPrompt.trim()) return;
 
-    // Inquiry mode: fetch questions first via direct API call (no META_PROMPT wrapping)
-    if (contextMode === 'inquiry' && !showInquiry) {
+    // Inquiry mode: analyze gaps first, then ask only missing questions
+    const currentShowInquiry = useOptimizeStore.getState().showInquiry;
+    if (contextMode === 'inquiry' && !currentShowInquiry) {
       setInquiryLoading(true);
       try {
-        const { INQUIRY_PROMPT } = await import('@/services/llm/meta-prompt');
-        const inquiryPrompt = INQUIRY_PROMPT(settings.optimizeLanguage);
-        const systemMessage = inquiryPrompt;
-        const userMessage = inputPrompt;
+        const { ANALYSIS_PROMPT, INQUIRY_PROMPT } = await import('@/services/llm/meta-prompt');
 
-        let content = '';
+        // Step 1: Analyze what's missing
+        let analysisContent = '';
         if (selectedProvider === 'custom') {
           const baseUrl = settings.customBaseUrl || 'https://api.xxdlzs.top';
           const apiKey = settings.apiKeys.custom || '';
@@ -162,58 +240,123 @@ export default function Optimize() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify({
-              model: selectedModel || 'deepseek-ai/DeepSeek-V3.2',
+              model: selectedModel,
               messages: [
-                { role: 'system', content: systemMessage },
-                { role: 'user', content: userMessage },
+                { role: 'system', content: ANALYSIS_PROMPT },
+                { role: 'user', content: inputPrompt },
               ],
-              temperature: 0.7,
-              max_tokens: 1024,
+              temperature: 0.3,
+              max_tokens: 4096,
             }),
           });
           if (!res.ok) throw new Error(`API error ${res.status}`);
           const data = await res.json();
-          content = data.choices?.[0]?.message?.content || '';
+          analysisContent = data.choices?.[0]?.message?.content || '';
         } else if (selectedProvider === 'claude') {
-          const { ClaudeService } = await import('@/services/llm/claude');
-          const svc = new ClaudeService();
-          const result = await svc.optimize({
-            prompt: userMessage,
-            context: systemMessage,
-            language: settings.optimizeLanguage,
-            style: 'default',
-            provider: 'claude',
-            model: selectedModel,
-          }, settings.apiKeys.claude || '');
-          content = result.optimizedPrompt;
+          const res = await fetch('/api/claude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              apiKey: settings.apiKeys.claude,
+              model: selectedModel,
+              system: ANALYSIS_PROMPT,
+              prompt: inputPrompt,
+              maxTokens: 512,
+            }),
+          });
+          if (!res.ok) throw new Error('Analysis API failed');
+          const data = await res.json();
+          analysisContent = data.content?.[0]?.text || '';
         } else {
-          const { OpenAIService } = await import('@/services/llm/openai');
-          const svc = new OpenAIService();
-          const result = await svc.optimize({
-            prompt: userMessage,
-            context: systemMessage,
-            language: settings.optimizeLanguage,
-            style: 'default',
-            provider: 'openai',
+          const { default: OpenAI } = await import('openai');
+          const client = new OpenAI({ apiKey: settings.apiKeys.openai, dangerouslyAllowBrowser: true });
+          const res = await client.chat.completions.create({
             model: selectedModel,
-          }, settings.apiKeys.openai || '');
-          content = result.optimizedPrompt;
+            messages: [
+              { role: 'system', content: ANALYSIS_PROMPT },
+              { role: 'user', content: inputPrompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 4096,
+          });
+          analysisContent = res.choices[0]?.message?.content || '';
         }
 
-        // Parse the inquiry response
-        const parsed = extractJSON(content);
-        if (parsed && Array.isArray(parsed.questions)) {
-          setInquiryQuestions(parsed.questions);
+        const analysisParsed = extractJSON(analysisContent);
+        const missing: string[] = analysisParsed && Array.isArray(analysisParsed.missing)
+          ? analysisParsed.missing
+          : [];
+
+        setAnalysisMissing(missing);
+
+        // Step 2: Generate targeted questions for missing elements (always ask at least 2)
+        const inquiryPrompt = INQUIRY_PROMPT(settings.optimizeLanguage, inquiryCount);
+        let inquiryContent = '';
+        if (selectedProvider === 'custom') {
+          const baseUrl = settings.customBaseUrl || 'https://api.xxdlzs.top';
+          const apiKey = settings.apiKeys.custom || '';
+          let v1Base = baseUrl.trim().replace(/\/+$/, '');
+          if (!v1Base.endsWith('/v1')) v1Base += '/v1';
+          const url = v1Base + '/chat/completions';
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify({
+              model: selectedModel,
+              messages: [
+                { role: 'system', content: inquiryPrompt },
+                { role: 'user', content: inputPrompt },
+              ],
+              temperature: 0.7,
+              max_tokens: 4096,
+            }),
+          });
+          if (!res.ok) throw new Error(`API error ${res.status}`);
+          const data = await res.json();
+          inquiryContent = data.choices?.[0]?.message?.content || '';
+        } else if (selectedProvider === 'claude') {
+          const res = await fetch('/api/claude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              apiKey: settings.apiKeys.claude,
+              model: selectedModel,
+              system: inquiryPrompt,
+              prompt: inputPrompt,
+              maxTokens: 512,
+            }),
+          });
+          if (!res.ok) throw new Error('Inquiry API failed');
+          const data = await res.json();
+          inquiryContent = data.content?.[0]?.text || '';
+        } else {
+          const { default: OpenAI } = await import('openai');
+          const client = new OpenAI({ apiKey: settings.apiKeys.openai, dangerouslyAllowBrowser: true });
+          const res = await client.chat.completions.create({
+            model: selectedModel,
+            messages: [
+              { role: 'system', content: inquiryPrompt },
+              { role: 'user', content: inputPrompt },
+            ],
+            temperature: 0.7,
+            max_tokens: 4096,
+          });
+          inquiryContent = res.choices[0]?.message?.content || '';
+        }
+
+        const inquiryParsed = extractJSON(inquiryContent);
+        if (inquiryParsed && Array.isArray(inquiryParsed.questions) && inquiryParsed.questions.length > 0) {
+          setInquiryQuestions(inquiryParsed.questions);
           setInquiryAnswers({});
           setInquiryIndex(0);
           setShowInquiry(true);
         } else {
-          // Fallback: optimize directly without inquiry
-          await doOptimize(inputPrompt, context);
+          throw new Error('Optimization failed, please check your model');
         }
-      } catch {
-        // On error, fall back to direct optimization
-        await doOptimize(inputPrompt, context);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Inquiry failed';
+        useOptimizeStore.getState().setError(message);
+        resetInquiry();
       } finally {
         setInquiryLoading(false);
       }
@@ -221,7 +364,7 @@ export default function Optimize() {
     }
 
     // Inquiry mode: use answers as context
-    if (showInquiry) {
+    if (useOptimizeStore.getState().showInquiry) {
       const answerText = inquiryQuestions
         .map((q, i) => `${q.question}: ${inquiryAnswers[i] || ''}`)
         .filter((a) => a.endsWith(': ') === false)
@@ -234,6 +377,7 @@ export default function Optimize() {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Optimization failed';
         useOptimizeStore.getState().setError(message);
+        resetInquiry();
       } finally {
         setIsLocalOptimizing(false);
       }
@@ -267,13 +411,24 @@ export default function Optimize() {
 
   const handleSave = async () => {
     if (!optimizedPrompt) return;
+    if (fromDetailId) {
+      await saveVersion(fromDetailId, optimizedPrompt, explanation, suggestions, selectedProvider, selectedModel);
+      toast('success', t('optimize.saveToLibrary') + ' ✓');
+      return;
+    }
+    setSaveCategory(detectCategory(inputPrompt));
+    setShowSaveModal(true);
+  };
+
+  const handleConfirmSave = async () => {
+    if (!optimizedPrompt) return;
     const result = await createPrompt({
       title: inputPrompt.slice(0, 50) + (inputPrompt.length > 50 ? '...' : ''),
       originalText: inputPrompt,
       optimizedText: optimizedPrompt,
       explanation,
       suggestions,
-      category: 'other',
+      category: saveCategory,
       tags: [],
       provider: selectedProvider,
       model: selectedModel,
@@ -284,6 +439,7 @@ export default function Optimize() {
     } else {
       toast('success', t('optimize.saveToLibrary') + ' ✓');
     }
+    setShowSaveModal(false);
   };
 
   const filteredModels = useMemo(() => {
@@ -311,6 +467,7 @@ export default function Optimize() {
             onChange={(e) => {
               const p = e.target.value as 'openai' | 'claude' | 'custom';
               setSelectedProvider(p);
+              clearResult();
               setUseManualModel(false);
               setManualModel('');
               if (p !== 'custom') {
@@ -334,7 +491,7 @@ export default function Optimize() {
               {isNvidiaApiKey(settings.apiKeys.custom || '') ? (
                 <select
                   value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
+                  onChange={(e) => { setSelectedModel(e.target.value); clearResult(); }}
                   className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500 max-w-[250px]"
                 >
                   {NVIDIA_MODELS.map((m) => (
@@ -352,6 +509,7 @@ export default function Optimize() {
                       setManualModel('');
                     } else {
                       setSelectedModel(e.target.value);
+                      clearResult();
                     }
                   }}
                   className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500 max-w-[200px]"
@@ -371,6 +529,7 @@ export default function Optimize() {
                     onChange={(e) => {
                       setManualModel(e.target.value);
                       setSelectedModel(e.target.value);
+                      clearResult();
                     }}
                     placeholder={relayLoading ? t('common.loading') : t('optimize.modelPlaceholder')}
                     className="h-8 w-44 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -403,7 +562,7 @@ export default function Optimize() {
           ) : (
             <select
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
+              onChange={(e) => { setSelectedModel(e.target.value); clearResult(); }}
               className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               {filteredModels.map((m) => (
@@ -414,17 +573,19 @@ export default function Optimize() {
             </select>
           )}
           {/* Style */}
-          <select
-            value={selectedStyle}
-            onChange={(e) => setSelectedStyle(e.target.value as OptimizeStyle)}
-            className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
-          >
-            <option value="default">{t('optimize.styleDefault')}</option>
-            <option value="concise">{t('optimize.styleConcise')}</option>
-            <option value="detailed">{t('optimize.styleDetailed')}</option>
-            <option value="creative">{t('optimize.styleCreative')}</option>
-            <option value="professional">{t('optimize.styleProfessional')}</option>
-          </select>
+          <div className="relative">
+            <select
+              value={selectedStyle}
+              onChange={(e) => setSelectedStyle(e.target.value as OptimizeStyle)}
+              className="h-8 px-3 rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-1 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="default">{t('optimize.styleDefault')}</option>
+              <option value="concise">{t('optimize.styleConcise')}</option>
+              <option value="detailed">{t('optimize.styleDetailed')}</option>
+              <option value="creative">{t('optimize.styleCreative')}</option>
+              <option value="professional">{t('optimize.styleProfessional')}</option>
+            </select>
+          </div>
           {/* Language */}
           <select
             value={settings.optimizeLanguage}
@@ -622,9 +783,25 @@ export default function Optimize() {
                       : t('optimize.optimizeButton')}
               </Button>
               {optimizedPrompt && (
-                <Button variant="ghost" onClick={clearResult} size="lg">
-                  <RotateCcw size={16} />
-                </Button>
+                <>
+                  {contextMode === 'inquiry' && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        resetInquiry();
+                        handleOptimize();
+                      }}
+                      size="lg"
+                      disabled={inquiryLoading || isLocalOptimizing}
+                    >
+                      <RotateCcw size={16} />
+                      {t('optimize.reInquiry', '重新询问')}
+                    </Button>
+                  )}
+                  <Button variant="ghost" onClick={clearResult} size="lg">
+                    <RotateCcw size={16} />
+                  </Button>
+                </>
               )}
             </div>
 
@@ -770,19 +947,54 @@ export default function Optimize() {
           )}
         </div>
       )}
+
+      {/* Save modal with category selector */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowSaveModal(false)} />
+          <div className="relative w-full max-w-sm bg-surface-0 dark:bg-dark-1 rounded-xl shadow-modal border border-surface-3 dark:border-dark-3 p-6 animate-slide-down">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">
+              {t('optimize.saveModal.title', '保存到提示词库')}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              {t('optimize.saveModal.desc', '选择一个分类')}
+            </p>
+
+            <div className="grid grid-cols-4 gap-2 mb-5">
+              {DEFAULT_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSaveCategory(cat.id)}
+                  className={cn(
+                    'flex flex-col items-center gap-1 py-2.5 rounded-lg text-xs font-medium transition-colors',
+                    saveCategory === cat.id
+                      ? 'bg-brand-500 text-white'
+                      : 'bg-surface-2 dark:bg-dark-3 text-gray-600 dark:text-gray-400 hover:bg-surface-3 dark:hover:bg-dark-2'
+                  )}
+                >
+                  <span className="text-lg">{cat.icon}</span>
+                  <span>{cat.nameZh}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-surface-2 dark:bg-dark-3 text-gray-600 dark:text-gray-400 hover:bg-surface-3 dark:hover:bg-dark-2 transition-colors"
+              >
+                {t('common.cancel', '取消')}
+              </button>
+              <button
+                onClick={handleConfirmSave}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-brand-500 text-white hover:bg-brand-600 transition-colors"
+              >
+                {t('optimize.saveModal.confirm', '保存')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-function extractJSON(text: string): Record<string, unknown> | null {
-  try { return JSON.parse(text); } catch { /* ignore */ }
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch?.[1]) {
-    try { return JSON.parse(fenceMatch[1].trim()); } catch { /* ignore */ }
-  }
-  const braceMatch = text.match(/\{[\s\S]*\}/);
-  if (braceMatch) {
-    try { return JSON.parse(braceMatch[0]); } catch { /* ignore */ }
-  }
-  return null;
 }

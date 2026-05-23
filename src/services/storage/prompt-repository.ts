@@ -1,5 +1,5 @@
 import { db } from './db';
-import type { Prompt } from '@/types/prompt';
+import type { Prompt, PromptVersion } from '@/types/prompt';
 import type { FilterConfig, SortConfig, PaginatedResult } from '@/types/common';
 
 export const promptRepository = {
@@ -31,9 +31,37 @@ export const promptRepository = {
     return db.prompts.filter((p) => p.originalText === originalText).first();
   },
 
+  async findDuplicate(originalText: string, optimizedText: string): Promise<Prompt | undefined> {
+    return db.prompts.filter((p) => p.originalText === originalText && p.optimizedText === optimizedText).first();
+  },
+
   async update(id: string, changes: Partial<Prompt>): Promise<number> {
     return db.prompts.update(id, {
       ...changes,
+      updatedAt: new Date().toISOString(),
+    });
+  },
+
+  async saveVersion(id: string, newText: string, explanation: string, suggestions: string[], provider: Prompt['provider'], model: string): Promise<void> {
+    const prompt = await db.prompts.get(id);
+    if (!prompt) return;
+    const version: PromptVersion = {
+      version: prompt.version,
+      text: prompt.optimizedText,
+      explanation: prompt.explanation,
+      suggestions: prompt.suggestions,
+      provider: prompt.provider,
+      model: prompt.model,
+      createdAt: prompt.updatedAt,
+    };
+    await db.prompts.update(id, {
+      optimizedText: newText,
+      explanation,
+      suggestions,
+      provider,
+      model,
+      version: prompt.version + 1,
+      history: [...prompt.history, version],
       updatedAt: new Date().toISOString(),
     });
   },

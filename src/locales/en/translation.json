@@ -128,14 +128,37 @@
     "gistCreated": "Gist created!",
     "editTitle": "Edit title",
     "addTag": "Add tag",
-    "selectCategory": "Select category"
+    "selectCategory": "Select category",
+    "importGist": "Import from Gist",
+    "gistImported": "Prompt imported from Gist!",
+    "shareToCommunity": "Share to Community",
+    "sharedToCommunity": "Shared to community!",
+    "qualityScore": "Quality Score",
+    "clarity": "Clarity",
+    "completeness": "Completeness",
+    "effectiveness": "Effectiveness",
+    "overall": "Overall",
+    "aiScore": "AI Score",
+    "userScore": "Manual Score",
+    "scoreHistory": "Score Trend",
+    "noScores": "No scores yet",
+    "scoreSaved": "Score saved",
+    "avgScore": "Avg Score",
+    "scoring": "Scoring...",
+    "recommendedStyle": "Recommended style",
+    "basedOnScores": "Based on your scoring data",
+    "noScoreData": "No score data yet. Score prompts to get personalized recommendations"
   },
   "compare": {
     "title": "Comparison",
     "original": "Original",
     "optimized": "Optimized",
     "noDiff": "No differences found",
-    "comingSoon": "Side-by-side comparison coming soon"
+    "comingSoon": "Side-by-side comparison coming soon",
+    "selectPrompt": "Select a prompt...",
+    "selectTwoPrompts": "Select two prompts above to compare them",
+    "samePrompt": "You selected the same prompt for both sides",
+    "diff": "Differences"
   },
   "notFound": {
     "title": "404",
@@ -147,10 +170,13 @@
     "subtitle": "Discover and share prompts with the community",
     "comingSoon": "Community features coming soon — share and discover prompts with others",
     "forkToLibrary": "Fork to Library",
+    "forkSuccess": "Forked to your library",
     "submitPrompt": "Submit a Prompt",
-    "noPrompts": "No community prompts yet",
+    "noPrompts": "No matching prompts found",
     "searchPlaceholder": "Search community prompts...",
-    "loading": "Loading community prompts..."
+    "loading": "Searching...",
+    "startSearch": "Enter keywords to search public community prompts, or leave empty to browse all",
+    "shareToCommunity": "Share to Community"
   },
   "settings": {
     "title": "Settings",

@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import type { OptimizeRequest, OptimizeResponse, StreamChunk } from '@/types/llm';
 import { META_PROMPT } from './meta-prompt';
+import { extractJSON } from '@/utils/extract-json';
 
 export class OpenAIService {
   private getClient(apiKey: string) {
@@ -13,7 +14,7 @@ export class OpenAIService {
     onChunk?: (chunk: StreamChunk) => void
   ): Promise<OptimizeResponse> {
     const client = this.getClient(apiKey);
-    const systemPrompt = META_PROMPT(request.language, request.style);
+    const systemPrompt = META_PROMPT(request.language, request.style, request.dynamicExamples);
     const userMessage = request.context
       ? `[CONTEXT]\n${request.context}\n[/CONTEXT]\n\n[ORIGINAL PROMPT]\n${request.prompt}\n[/ORIGINAL PROMPT]`
       : request.prompt;
@@ -77,35 +78,4 @@ export class OpenAIService {
       tokensUsed: { input: 0, output: 0 },
     };
   }
-}
-
-function extractJSON(text: string): Record<string, unknown> | null {
-  // Try direct parse
-  try {
-    return JSON.parse(text);
-  } catch {
-    // ignore
-  }
-
-  // Try extracting from markdown code fence
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch?.[1]) {
-    try {
-      return JSON.parse(fenceMatch[1].trim());
-    } catch {
-      // ignore
-    }
-  }
-
-  // Try finding first { ... } block
-  const braceMatch = text.match(/\{[\s\S]*\}/);
-  if (braceMatch) {
-    try {
-      return JSON.parse(braceMatch[0]);
-    } catch {
-      // ignore
-    }
-  }
-
-  return null;
 }

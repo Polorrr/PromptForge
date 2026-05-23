@@ -7,7 +7,7 @@ export interface GistResult {
 }
 
 export const gistService = {
-  async createGist(prompt: Prompt, githubToken: string): Promise<GistResult> {
+  async createGist(prompt: Prompt, githubToken: string, shareToCommunity = false): Promise<GistResult> {
     const filename = `promptforge-${prompt.id.slice(0, 8)}.json`;
     const content = JSON.stringify(
       {
@@ -31,7 +31,9 @@ export const gistService = {
         githubToken,
         filename,
         content,
-        description: `PromptForge: ${prompt.title}`,
+        description: shareToCommunity
+          ? `PromptForge Community: ${prompt.title}`
+          : `PromptForge: ${prompt.title}`,
         public: true,
       }),
     });

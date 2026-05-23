@@ -15,6 +15,7 @@ interface PromptState {
   loadPrompt: (id: string) => Promise<void>;
   createPrompt: (prompt: Omit<Prompt, 'id' | 'createdAt' | 'updatedAt' | 'version' | 'history'>) => Promise<{ id: string; isDuplicate: boolean }>;
   updatePrompt: (id: string, changes: Partial<Prompt>) => Promise<void>;
+  saveVersion: (id: string, newText: string, explanation: string, suggestions: string[], provider: Prompt['provider'], model: string) => Promise<void>;
   deletePrompt: (id: string) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
   setFilter: (filter: FilterConfig) => void;
@@ -47,7 +48,7 @@ export const usePromptStore = create<PromptState>((set, get) => ({
   },
 
   createPrompt: async (prompt) => {
-    const existing = await promptRepository.findByOriginalText(prompt.originalText);
+    const existing = await promptRepository.findDuplicate(prompt.originalText, prompt.optimizedText);
     if (existing) {
       return { id: existing.id, isDuplicate: true };
     }
@@ -58,6 +59,13 @@ export const usePromptStore = create<PromptState>((set, get) => ({
 
   updatePrompt: async (id, changes) => {
     await promptRepository.update(id, changes);
+    await get().loadPrompts();
+  },
+
+  saveVersion: async (id, newText, explanation, suggestions, provider, model) => {
+    await promptRepository.saveVersion(id, newText, explanation, suggestions, provider, model);
+    const prompt = await promptRepository.getById(id);
+    set({ currentPrompt: prompt || null });
     await get().loadPrompts();
   },
 
