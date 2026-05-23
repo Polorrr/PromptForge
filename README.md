@@ -11,7 +11,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 
-[🌐 在线体验](https://promptforge-star.vercel.app/optimize) · [GitHub](https://github.com/Polorrr/PromptForge) · [快速开始](#-快速开始)
+[🌐 在线体验](https://promptforge-star.vercel.app/optimize) · [GitHub](https://github.com/Polorrr/PromptForge) · [English](#english)
 
 </div>
 
@@ -225,3 +225,232 @@ MIT License
 [![Star History Chart](https://api.star-history.com/svg?repos=Polorrr/PromptForge&type=Date)](https://star-history.com/#Polorrr/PromptForge&Date)
 
 </div>
+
+---
+
+# English
+
+<details>
+<summary><strong>🌐 Click to switch to English</strong></summary>
+
+<br>
+
+<div align="center">
+
+# ⚡ PromptForge
+
+**AI Prompt Optimizer & Library**
+
+*An AI productivity tool that gets smarter the more you use it*
+
+[![Deployed on Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://promptforge-star.vercel.app/optimize)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+
+[🌐 Live Demo](https://promptforge-star.vercel.app/optimize) · [GitHub](https://github.com/Polorrr/PromptForge)
+
+</div>
+
+---
+
+## 🔍 What is PromptForge?
+
+PromptForge is a **browser-based AI prompt optimizer**. Type in a rough idea, and the AI automatically restructures it into a high-quality, well-structured prompt — complete with explanations and improvement suggestions.
+
+But it's not just a one-click optimizer — it **learns from your feedback**. Every score trains the system to understand your preferences, making future optimizations more aligned with your style.
+
+---
+
+## 🧠 Key Features
+
+### 1. Adaptive Learning Engine
+
+```
+Input → AI Optimizes → You Score → System Remembers → Better Next Time
+```
+
+- Score every result on **clarity, completeness, and effectiveness** (1-5 scale)
+- Scores stored locally in your browser (IndexedDB) — never uploaded to any server
+- High-scoring results are automatically injected as **Dynamic Few-Shot** examples into future optimizations
+- System tracks average scores per style (concise/detailed/creative/professional) and recommends the best one
+
+> **The more you use it, the smarter it gets.**
+
+### 2. Multi-AI Engine Support
+
+| Engine | Integration | Notes |
+|--------|------------|-------|
+| OpenAI | SDK Direct | GPT-4o / GPT-4.1 etc. |
+| Claude | Serverless API | Anthropic Claude series |
+| API Relay | OpenAI-compatible | Any OpenAI-compatible relay |
+| NVIDIA | Local Proxy | Via CORS proxy |
+
+### 3. Smart Inquiry Mode
+
+When enabled, AI first analyzes what's **missing** from your prompt (role, audience, format, constraints), then asks 2-7 targeted questions before optimizing.
+
+```
+Traditional: You write → AI guesses → Result may miss the mark
+Inquiry Mode: You write → AI asks → You answer → Precise optimization
+```
+
+### 4. Complete Prompt Library
+
+- 📁 **Categories** — 8 built-in categories + auto-categorization
+- 🏷️ **Tags** — Free tagging with multi-dimensional filtering
+- ⭐ **Favorites** — One-click save for frequently used prompts
+- 📊 **Version History** — Every optimization auto-saved as a new version
+- 📤 **Import/Export** — JSON format for easy migration and backup
+- 🔍 **Full-text Search** — Quickly find any prompt
+
+---
+
+## 📸 Screenshots
+
+### Optimizer — Type Your Idea, One-Click Optimize
+
+Enter your rough prompt on the left, select AI engine and style, click Optimize to get a structured high-quality prompt.
+
+![Optimizer](screenshots/optimize.png)
+
+### Score Popup — AI Score + Manual Score
+
+After optimization, a score popup appears. Adjust sliders manually or click "AI Score" for automatic evaluation.
+
+![Score Popup](screenshots/score-popup.png)
+
+### Prompt Details — Full Info + Score Trends
+
+View before/after comparison, change explanations, quality scores, and scoring history trends.
+
+![Prompt Details](screenshots/detail.png)
+
+### Scoring Panel — Batch Scoring + Analytics
+
+Batch AI-score your entire prompt library. View average scores across dimensions and trend charts.
+
+![Scoring Panel](screenshots/scoring.png)
+
+### Settings — Multi-API Configuration
+
+Configure multiple AI engine API keys and switch instantly. All keys stored locally in your browser only.
+
+![Settings](screenshots/settings.png)
+
+---
+
+## 🚀 Getting Started
+
+👉 Open [promptforge-star.vercel.app](https://promptforge-star.vercel.app/optimize)
+
+No installation needed. Just open and use. First-time users need to configure at least one API key in Settings.
+
+---
+
+## 🛠️ Tech Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                   Frontend                       │
+│  React 18 + TypeScript + Vite 6 + Tailwind CSS  │
+├─────────────────────────────────────────────────┤
+│                  State Layer                     │
+│         Zustand (localStorage persistence)       │
+├─────────────────────────────────────────────────┤
+│                 Storage Layer                    │
+│       IndexedDB via Dexie (prompts/scores/versions)│
+├─────────────────────────────────────────────────┤
+│                  AI Layer                        │
+│  OpenAI SDK / Claude API / OpenAI-compatible     │
+├─────────────────────────────────────────────────┤
+│               Meta-Prompt Engine                  │
+│  Dynamic Few-Shot + Style + Language + Scoring   │
+└─────────────────────────────────────────────────┘
+```
+
+### Project Structure
+
+```
+src/
+├── pages/
+│   ├── Optimize.tsx        # Main optimizer page
+│   ├── Library.tsx         # Prompt library
+│   ├── PromptDetail.tsx    # Prompt details + scoring
+│   ├── Settings.tsx        # Settings page
+│   └── Compare.tsx         # Side-by-side comparison
+├── services/
+│   ├── llm/
+│   │   ├── meta-prompt.ts  # 🧠 Core: Meta-Prompt engine
+│   │   ├── openai.ts       # OpenAI service
+│   │   ├── claude.ts       # Claude service
+│   │   └── custom.ts       # Custom relay service
+│   ├── scoring.ts          # AI scoring service
+│   └── storage/
+│       ├── db.ts           # IndexedDB init
+│       ├── prompt-repository.ts  # Prompt storage
+│       └── score-repository.ts   # Score storage
+├── stores/
+│   ├── useOptimizeStore.ts # Optimization state
+│   ├── useSettingsStore.ts # Settings state
+│   └── useAppStore.ts      # Global state
+└── i18n.ts                 # Internationalization
+```
+
+---
+
+## 📖 Usage Guide
+
+### Step 1: Configure API Key
+
+1. Open [Settings](https://promptforge-star.vercel.app/settings)
+2. Enter your API key (OpenAI / Claude / API Relay)
+3. Click "Test Connection" to verify
+4. API keys are stored locally in your browser — **never sent to our servers**
+
+![Settings](screenshots/settings.png)
+
+### Step 2: Optimize a Prompt
+
+1. Open [Optimize](https://promptforge-star.vercel.app/optimize)
+2. Type your rough idea in the left input box
+3. Select AI engine, model, and optimization style
+4. Click the "Optimize" button
+5. The right panel shows the optimized prompt, explanations, and suggestions
+
+![Optimizer](screenshots/optimize.png)
+
+### Step 3: Score & Provide Feedback
+
+After optimization, the score popup appears automatically:
+
+- **Manual Score**: Drag sliders to rate clarity, completeness, effectiveness (1-5)
+- **AI Score**: Click "AI Score" button for automatic evaluation
+- **Skip**: Click the X to close without saving
+
+Scores are remembered and used to improve future results.
+
+![Score Popup](screenshots/score-popup.png)
+
+### Step 4: Manage Your Prompt Library
+
+1. Click "Save" on the optimization result to save to library
+2. View all saved prompts in [Library](https://promptforge-star.vercel.app/library)
+3. Filter by category, tags, favorites, or search
+4. Click any prompt to view details, version history, and score trends
+
+![Library](screenshots/detail.png)
+
+---
+
+## 🌐 Internationalization
+
+Supports Chinese / English. Click the language toggle in the top-right corner. Your preference is auto-saved.
+
+---
+
+## 📜 License
+
+MIT License
+
+</details>
