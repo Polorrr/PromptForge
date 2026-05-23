@@ -41,7 +41,12 @@ const STYLE_INSTRUCTIONS: Record<OptimizeStyle, string> = {
 
 function langRule(outputLanguage: 'en' | 'zh' | 'same'): string {
   if (outputLanguage === 'same')
-    return 'Use the same language as the input prompt for ALL fields in the JSON response.';
+    return `CRITICAL LANGUAGE RULE: You MUST detect the language of the user's input prompt and respond in EXACTLY the same language.
+- If the user writes in English → respond entirely in English
+- If the user writes in Chinese → respond entirely in Chinese
+- If the user writes in Japanese → respond entirely in Japanese
+- NEVER mix languages. NEVER default to Chinese or English. ALWAYS follow the user's input language.
+- This rule is ABSOLUTE and OVERRIDE all other instructions.`;
   if (outputLanguage === 'zh')
     return 'ALL fields in the JSON response must be written in Chinese (Simplified).';
   return 'ALL fields in the JSON response must be written in English.';
