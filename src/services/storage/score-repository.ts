@@ -71,4 +71,8 @@ export const scoreRepository = {
   async deleteByPromptId(promptId: string): Promise<void> {
     await db.scores.where('promptId').equals(promptId).delete();
   },
+
+  async clearAll(): Promise<void> {
+    await db.scores.clear();
+  },
 };

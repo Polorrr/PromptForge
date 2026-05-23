@@ -10,8 +10,11 @@ import {
   Copy,
   ExternalLink,
   Columns2,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { usePromptStore } from '@/stores/usePromptStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { ROUTES } from '@/constants/routes';
@@ -19,6 +22,8 @@ import { DEFAULT_CATEGORIES } from '@/constants/categories';
 import { copyToClipboard } from '@/utils/copy';
 import { formatDate } from '@/utils/date';
 import { cn } from '@/utils/cn';
+import { aiScore } from '@/services/scoring';
+import { scoreRepository } from '@/services/storage/score-repository';
 import type { Prompt } from '@/types/prompt';
 
 export default function Library() {
@@ -34,9 +39,14 @@ export default function Library() {
     deletePrompt,
     toggleFavorite,
   } = usePromptStore();
+  const settings = useSettingsStore();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchScoring, setBatchScoring] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -69,45 +79,159 @@ export default function Library() {
     }
   };
 
+  const toggleBatchMode = () => {
+    setBatchMode(!batchMode);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(prompts.map((p) => p.id)));
+  };
+
+  const handleBatchScore = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = [...selectedIds];
+    setBatchScoring(true);
+    setBatchProgress({ current: 0, total: ids.length });
+    let scored = 0;
+
+    for (const id of ids) {
+      const prompt = prompts.find((p) => p.id === id);
+      if (!prompt) continue;
+      try {
+        const result = await aiScore(
+          prompt.originalText,
+          prompt.optimizedText,
+          prompt.provider,
+          settings.apiKeys[prompt.provider] || '',
+          prompt.model,
+          prompt.provider === 'custom' ? settings.customBaseUrl : undefined
+        );
+        await scoreRepository.add({
+          promptId: prompt.id,
+          original: prompt.originalText,
+          optimized: prompt.optimizedText,
+          style: 'default',
+          scores: result.scores,
+          overall: result.overall,
+          source: 'ai',
+          scoredAt: new Date().toISOString(),
+        });
+        scored++;
+      } catch {
+        // skip failed scores
+      }
+      setBatchProgress({ current: scored, total: ids.length });
+    }
+
+    setBatchScoring(false);
+    setBatchMode(false);
+    setSelectedIds(new Set());
+    toast('success', t('detail.batchComplete', { count: scored }));
+  };
+
   return (
     <div className="max-w-6xl mx-auto py-6 px-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-heading">{t('library.title')}</h1>
         <div className="flex items-center gap-2">
-          {prompts.length >= 2 && (
-            <Link
-              to={`${ROUTES.COMPARE}?a=${prompts[0]?.id}&b=${prompts[1]?.id}`}
-              className="p-2 rounded-lg text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2 hover:text-gray-600 transition-colors"
-              title={t('compare.title')}
-            >
-              <Columns2 size={18} />
-            </Link>
+          {batchMode ? (
+            <>
+              <span className="text-xs text-gray-500">
+                {t('detail.batchSelectCount', { count: selectedIds.size })}
+              </span>
+              <Button size="sm" variant="ghost" onClick={selectAll}>
+                {t('common.confirm')}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBatchScore}
+                loading={batchScoring}
+                disabled={selectedIds.size === 0}
+              >
+                <Sparkles size={14} />
+                {t('detail.batchScore')}
+              </Button>
+              <button
+                onClick={toggleBatchMode}
+                className="p-2 rounded-lg text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2"
+              >
+                <X size={18} />
+              </button>
+            </>
+          ) : (
+            <>
+              {prompts.length >= 2 && (
+                <Link
+                  to={`${ROUTES.COMPARE}?a=${prompts[0]?.id}&b=${prompts[1]?.id}`}
+                  className="p-2 rounded-lg text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2 hover:text-gray-600 transition-colors"
+                  title={t('compare.title')}
+                >
+                  <Columns2 size={18} />
+                </Link>
+              )}
+              {prompts.length > 0 && (
+                <button
+                  onClick={toggleBatchMode}
+                  className="p-2 rounded-lg text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2 hover:text-gray-600 transition-colors"
+                  title={t('detail.batchScore')}
+                >
+                  <Sparkles size={18} />
+                </button>
+              )}
+              <button
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  'p-2 rounded-lg transition-colors',
+                  viewMode === 'grid'
+                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
+                    : 'text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2'
+                )}
+              >
+                <Grid3X3 size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'p-2 rounded-lg transition-colors',
+                  viewMode === 'list'
+                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
+                    : 'text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2'
+                )}
+              >
+                <List size={18} />
+              </button>
+            </>
           )}
-          <button
-            onClick={() => setViewMode('grid')}
-            className={cn(
-              'p-2 rounded-lg transition-colors',
-              viewMode === 'grid'
-                ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
-                : 'text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2'
-            )}
-          >
-            <Grid3X3 size={18} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={cn(
-              'p-2 rounded-lg transition-colors',
-              viewMode === 'list'
-                ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
-                : 'text-gray-400 hover:bg-surface-2 dark:hover:bg-dark-2'
-            )}
-          >
-            <List size={18} />
-          </button>
         </div>
       </div>
+
+      {/* Batch progress */}
+      {batchScoring && (
+        <div className="mb-4 p-3 rounded-lg bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-brand-700 dark:text-brand-300">
+              {t('detail.batchProgress', { current: batchProgress.current, total: batchProgress.total })}
+            </span>
+          </div>
+          <div className="h-1.5 bg-brand-100 dark:bg-brand-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-500 rounded-full transition-all duration-300"
+              style={{ width: `${batchProgress.total > 0 ? (batchProgress.current / batchProgress.total) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-6">
@@ -226,6 +350,9 @@ export default function Library() {
               onDelete={handleDelete}
               onCopy={handleCopy}
               onToggleFavorite={toggleFavorite}
+              batchMode={batchMode}
+              selected={selectedIds.has(p.id)}
+              onToggleSelect={() => toggleSelect(p.id)}
             />
           ))}
         </div>
@@ -238,6 +365,9 @@ export default function Library() {
               onDelete={handleDelete}
               onCopy={handleCopy}
               onToggleFavorite={toggleFavorite}
+              batchMode={batchMode}
+              selected={selectedIds.has(p.id)}
+              onToggleSelect={() => toggleSelect(p.id)}
             />
           ))}
         </div>
@@ -251,35 +381,65 @@ function PromptCard({
   onDelete,
   onCopy,
   onToggleFavorite,
+  batchMode,
+  selected,
+  onToggleSelect,
 }: {
   prompt: Prompt;
   onDelete: (id: string) => void;
   onCopy: (text: string) => void;
   onToggleFavorite: (id: string) => void;
+  batchMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   return (
-    <div className="group rounded-xl border border-surface-3 dark:border-dark-3 bg-surface-0 dark:bg-dark-0 p-4 hover:border-brand-300 dark:hover:border-brand-700 transition-all hover:shadow-elevated">
+    <div className={cn(
+      'group rounded-xl border bg-surface-0 dark:bg-dark-0 p-4 transition-all hover:shadow-elevated',
+      selected
+        ? 'border-brand-400 dark:border-brand-600 bg-brand-50/50 dark:bg-brand-900/10'
+        : 'border-surface-3 dark:border-dark-3 hover:border-brand-300 dark:hover:border-brand-700'
+    )}>
       <div className="flex items-start justify-between mb-2">
+        {batchMode ? (
+          <button
+            onClick={onToggleSelect}
+            className={cn(
+              'w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mr-2 mt-0.5 transition-colors',
+              selected
+                ? 'bg-brand-500 border-brand-500'
+                : 'border-gray-300 dark:border-gray-600'
+            )}
+          >
+            {selected && (
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+        ) : null}
         <Link
           to={`/library/${prompt.id}`}
-          className="text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-brand-600 dark:hover:text-brand-400 line-clamp-1"
+          className="text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-brand-600 dark:hover:text-brand-400 line-clamp-1 flex-1"
         >
           {prompt.title}
         </Link>
-        <button
-          onClick={() => onToggleFavorite(prompt.id)}
-          className="shrink-0 ml-2"
-        >
-          <Star
-            size={16}
-            className={cn(
-              'transition-colors',
-              prompt.isFavorite
-                ? 'fill-yellow-400 text-yellow-400'
-                : 'text-gray-300 dark:text-gray-600 group-hover:text-gray-400'
-            )}
-          />
-        </button>
+        {!batchMode && (
+          <button
+            onClick={() => onToggleFavorite(prompt.id)}
+            className="shrink-0 ml-2"
+          >
+            <Star
+              size={16}
+              className={cn(
+                'transition-colors',
+                prompt.isFavorite
+                  ? 'fill-yellow-400 text-yellow-400'
+                  : 'text-gray-300 dark:text-gray-600 group-hover:text-gray-400'
+              )}
+            />
+          </button>
+        )}
       </div>
 
       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-3 mb-3 leading-relaxed">
@@ -297,6 +457,95 @@ function PromptCard({
             </span>
           ))}
         </div>
+        {!batchMode && (
+          <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => onCopy(prompt.optimizedText)}
+              className="p-1 rounded hover:bg-surface-2 dark:hover:bg-dark-2 text-gray-400"
+            >
+              <Copy size={14} />
+            </button>
+            <button
+              onClick={() => onDelete(prompt.id)}
+              className="p-1 rounded hover:bg-error/10 text-gray-400 hover:text-error"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PromptListItem({
+  prompt,
+  onDelete,
+  onCopy,
+  onToggleFavorite,
+  batchMode,
+  selected,
+  onToggleSelect,
+}: {
+  prompt: Prompt;
+  onDelete: (id: string) => void;
+  onCopy: (text: string) => void;
+  onToggleFavorite: (id: string) => void;
+  batchMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
+}) {
+  return (
+    <div className={cn(
+      'group flex items-center gap-4 px-4 py-3 rounded-lg border transition-all',
+      selected
+        ? 'border-brand-400 dark:border-brand-600 bg-brand-50/50 dark:bg-brand-900/10'
+        : 'border-surface-3 dark:border-dark-3 hover:border-brand-300 dark:hover:border-brand-700'
+    )}>
+      {batchMode ? (
+        <button
+          onClick={onToggleSelect}
+          className={cn(
+            'w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+            selected
+              ? 'bg-brand-500 border-brand-500'
+              : 'border-gray-300 dark:border-gray-600'
+          )}
+        >
+          {selected && (
+            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+      ) : (
+        <button onClick={() => onToggleFavorite(prompt.id)}>
+          <Star
+            size={16}
+            className={cn(
+              prompt.isFavorite
+                ? 'fill-yellow-400 text-yellow-400'
+                : 'text-gray-300 dark:text-gray-600'
+            )}
+          />
+        </button>
+      )}
+      <Link
+        to={batchMode ? '#' : `/library/${prompt.id}`}
+        className="flex-1 min-w-0"
+        onClick={batchMode ? (e) => { e.preventDefault(); onToggleSelect(); } : undefined}
+      >
+        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+          {prompt.title}
+        </p>
+        <p className="text-xs text-gray-400 truncate mt-0.5">
+          {prompt.optimizedText}
+        </p>
+      </Link>
+      <span className="text-xs text-gray-400 shrink-0">
+        {formatDate(prompt.updatedAt)}
+      </span>
+      {!batchMode && (
         <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onCopy(prompt.optimizedText)}
@@ -311,62 +560,7 @@ function PromptCard({
             <Trash2 size={14} />
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function PromptListItem({
-  prompt,
-  onDelete,
-  onCopy,
-  onToggleFavorite,
-}: {
-  prompt: Prompt;
-  onDelete: (id: string) => void;
-  onCopy: (text: string) => void;
-  onToggleFavorite: (id: string) => void;
-}) {
-  return (
-    <div className="group flex items-center gap-4 px-4 py-3 rounded-lg border border-surface-3 dark:border-dark-3 hover:border-brand-300 dark:hover:border-brand-700 transition-all">
-      <button onClick={() => onToggleFavorite(prompt.id)}>
-        <Star
-          size={16}
-          className={cn(
-            prompt.isFavorite
-              ? 'fill-yellow-400 text-yellow-400'
-              : 'text-gray-300 dark:text-gray-600'
-          )}
-        />
-      </button>
-      <Link
-        to={`/library/${prompt.id}`}
-        className="flex-1 min-w-0"
-      >
-        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-          {prompt.title}
-        </p>
-        <p className="text-xs text-gray-400 truncate mt-0.5">
-          {prompt.optimizedText}
-        </p>
-      </Link>
-      <span className="text-xs text-gray-400 shrink-0">
-        {formatDate(prompt.updatedAt)}
-      </span>
-      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={() => onCopy(prompt.optimizedText)}
-          className="p-1 rounded hover:bg-surface-2 dark:hover:bg-dark-2 text-gray-400"
-        >
-          <Copy size={14} />
-        </button>
-        <button
-          onClick={() => onDelete(prompt.id)}
-          className="p-1 rounded hover:bg-error/10 text-gray-400 hover:text-error"
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { scoreRepository } from '@/services/storage/score-repository';
 import { detectCategory, getCategoryIcon } from '@/utils/auto-categorize';
 import { DEFAULT_CATEGORIES } from '@/constants/categories';
 import { useState, useMemo } from 'react';
+import { aiScore } from '@/services/scoring';
 import type { OptimizeStyle } from '@/types/llm';
 
 function cleanMarkdown(text: string): string {
@@ -103,6 +104,9 @@ export default function Optimize() {
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveCategory, setSaveCategory] = useState('other');
+  const [quickScore, setQuickScore] = useState({ clarity: 3, completeness: 3, effectiveness: 3 });
+  const [quickScoreSubmitted, setQuickScoreSubmitted] = useState(false);
+  const [quickScoreSubmitting, setQuickScoreSubmitting] = useState(false);
 
   const cleanedPrompt = useMemo(() => {
     if (!optimizedPrompt) return '';
@@ -220,6 +224,8 @@ export default function Optimize() {
 
   const handleOptimize = async () => {
     if (!inputPrompt.trim()) return;
+    setQuickScoreSubmitted(false);
+    setQuickScore({ clarity: 3, completeness: 3, effectiveness: 3 });
 
     // Inquiry mode: analyze gaps first, then ask only missing questions
     const currentShowInquiry = useOptimizeStore.getState().showInquiry;
@@ -440,6 +446,35 @@ export default function Optimize() {
       toast('success', t('optimize.saveToLibrary') + ' ✓');
     }
     setShowSaveModal(false);
+  };
+
+  const handleQuickScore = async () => {
+    if (!optimizedPrompt || !inputPrompt.trim()) return;
+    setQuickScoreSubmitting(true);
+    try {
+      const { userScore } = await import('@/services/scoring');
+      const result = userScore(quickScore.clarity, quickScore.completeness, quickScore.effectiveness);
+      // Save if we have a saved prompt (fromDetailId) or just show thanks
+      if (fromDetailId) {
+        const { scoreRepository } = await import('@/services/storage/score-repository');
+        await scoreRepository.add({
+          promptId: fromDetailId,
+          original: inputPrompt,
+          optimized: optimizedPrompt,
+          style: selectedStyle,
+          scores: result.scores,
+          overall: result.overall,
+          source: 'user',
+          scoredAt: new Date().toISOString(),
+        });
+      }
+      setQuickScoreSubmitted(true);
+      toast('success', t('optimize.scoreSubmitted'));
+    } catch {
+      // silent fail for quick score
+    } finally {
+      setQuickScoreSubmitting(false);
+    }
   };
 
   const filteredModels = useMemo(() => {
@@ -871,6 +906,60 @@ export default function Optimize() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Quick Score */}
+              {!quickScoreSubmitted ? (
+                <div className="rounded-lg border border-surface-3 dark:border-dark-3 bg-surface-1 dark:bg-dark-1 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t('optimize.quickScore')}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {(['clarity', 'completeness', 'effectiveness'] as const).map((key) => (
+                      <div key={key} className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500 w-16">{t(`detail.${key}`)}</span>
+                        <input
+                          type="range"
+                          min={1}
+                          max={5}
+                          step={1}
+                          value={quickScore[key]}
+                          onChange={(e) => setQuickScore({ ...quickScore, [key]: Number(e.target.value) })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              setQuickScore({ ...quickScore, [key]: Math.max(1, quickScore[key] - 1) });
+                            } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              setQuickScore({ ...quickScore, [key]: Math.min(5, quickScore[key] + 1) });
+                            }
+                          }}
+                          tabIndex={0}
+                          className="flex-1 accent-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
+                        />
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400 w-6 text-right">
+                          {quickScore[key]}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleQuickScore}
+                    loading={quickScoreSubmitting}
+                    className="mt-3 w-full"
+                  >
+                    {t('common.save')}
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4 text-center">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    {t('optimize.scoreSubmitted')}
+                  </p>
                 </div>
               )}
             </div>

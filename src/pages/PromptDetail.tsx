@@ -166,7 +166,7 @@ export default function PromptDetail() {
       setScores(updated);
       const stats = await scoreRepository.getStats(prompt.id);
       setScoreStats(stats);
-      toast('success', t('detail.scoreSaved'));
+      toast('success', t('detail.scoreThankYou'));
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Scoring failed');
     } finally {
@@ -193,8 +193,21 @@ export default function PromptDetail() {
     const stats = await scoreRepository.getStats(prompt.id);
     setScoreStats(stats);
     setShowUserScore(false);
+    toast('success', t('detail.scoreThankYou'));
+  };
+
+  const handleClearScores = async () => {
+    if (!prompt) return;
+    if (!window.confirm(t('detail.clearScoresConfirm'))) return;
+    await scoreRepository.deleteByPromptId(prompt.id);
+    setScores([]);
+    setScoreStats(null);
     toast('success', t('detail.scoreSaved'));
   };
+
+  const isScoreOutdated = scores.length > 0 && scores.some(
+    (s) => s.original !== prompt.originalText || s.optimized !== prompt.optimizedText
+  );
 
   const ScoreBar = ({ label, value }: { label: string; value: number }) => (
     <div className="flex items-center gap-3">
@@ -467,8 +480,24 @@ export default function PromptDetail() {
             >
               {t('detail.userScore')}
             </Button>
+            {scores.length > 0 && (
+              <button
+                onClick={handleClearScores}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-error hover:bg-error/10 transition-colors"
+                title={t('detail.clearScores')}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Outdated warning */}
+        {isScoreOutdated && (
+          <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-700 dark:text-yellow-300">
+            {t('detail.scoreOutdated')}
+          </div>
+        )}
 
         {/* User Score Sliders */}
         {showUserScore && (
@@ -483,7 +512,17 @@ export default function PromptDetail() {
                   step={1}
                   value={userScores[key]}
                   onChange={(e) => setUserScores({ ...userScores, [key]: Number(e.target.value) })}
-                  className="flex-1 accent-brand-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setUserScores({ ...userScores, [key]: Math.max(1, userScores[key] - 1) });
+                    } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setUserScores({ ...userScores, [key]: Math.min(5, userScores[key] + 1) });
+                    }
+                  }}
+                  tabIndex={0}
+                  className="flex-1 accent-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
                 />
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400 w-6 text-right">
                   {userScores[key]}
@@ -530,7 +569,7 @@ export default function PromptDetail() {
             )}
           </div>
         ) : (
-          <p className="text-xs text-gray-400 text-center py-4">{t('detail.noScores')}</p>
+          <p className="text-xs text-gray-400 text-center py-4">{t('detail.notScored')}</p>
         )}
       </div>
     </div>
